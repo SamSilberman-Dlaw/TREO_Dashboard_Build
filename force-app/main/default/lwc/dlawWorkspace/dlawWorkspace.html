@@ -1,100 +1,88 @@
 <template>
     <div class="dlaw-workspace">
 
-        <!-- ── Brand header ──────────────────────────────────────────── -->
-        <header class="workspace-header">
-            <div class="header-brand">
+        <!-- ── 2px loading track (top-edge shimmer, no real estate cost) ── -->
+        <div class="load-track">
+            <template if:false={isReady}>
+                <div class="load-fill"></div>
+            </template>
+        </div>
+
+        <!-- ── Single combined bar: brand + tabs + user identity ─────────── -->
+        <div class="workspace-bar">
+
+            <div class="bar-brand" aria-label="D.Law">
                 <span class="brand-glyph">⚖</span>
-                <div class="brand-text">
-                    <span class="brand-name">D.LAW</span>
-                    <span class="brand-divider">|</span>
-                    <span class="brand-product">Workspace</span>
-                </div>
+                <span class="brand-name">D.LAW</span>
             </div>
-            <div class="header-right">
-                <template if:true={isReady}>
-                    <span class="header-user">
-                        <span class="header-user-dot"></span>
-                        {firstName}
-                    </span>
+
+            <div class="bar-divider"></div>
+
+            <nav class="bar-tabs" role="tablist" aria-label="D.Law Workspace Navigation">
+
+                <template if:true={showOperations}>
+                    <button class={operationsTabClass}
+                            role="tab"
+                            data-tab="operations"
+                            aria-selected={isOperationsActive}
+                            title="Operations Console"
+                            onclick={handleTabClick}>
+                        <span class="tab-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                            </svg>
+                        </span>
+                        <span class="tab-label">Operations</span>
+                    </button>
                 </template>
-                <span class="header-date">{formattedDate}</span>
-            </div>
-        </header>
 
-        <!-- ── Tab navigation ────────────────────────────────────────── -->
-        <nav class="tab-nav" role="tablist" aria-label="D.Law Workspace Navigation">
+                <template if:true={showTimeEntry}>
+                    <button class={timeEntryTabClass}
+                            role="tab"
+                            data-tab="timeEntry"
+                            aria-selected={isTimeEntryActive}
+                            title="Time Entry"
+                            onclick={handleTabClick}>
+                        <span class="tab-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
+                            </svg>
+                        </span>
+                        <span class="tab-label">Time Entry</span>
+                    </button>
+                </template>
 
-            <template if:true={showOperations}>
-                <button class={operationsTabClass}
-                        role="tab"
-                        data-tab="operations"
-                        aria-selected={isOperationsActive}
-                        onclick={handleTabClick}>
-                    <span class="tab-accent"></span>
-                    <span class="tab-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
-                        </svg>
-                    </span>
-                    <span class="tab-label">Operations Console</span>
-                </button>
-            </template>
+                <template if:true={showCalendar}>
+                    <button class={calendarTabClass}
+                            role="tab"
+                            data-tab="calendar"
+                            aria-selected={isCalendarActive}
+                            title="Calendar &amp; Events"
+                            onclick={handleTabClick}>
+                        <span class="tab-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 3h-1V1h-2v2H8V1H6v2H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                            </svg>
+                        </span>
+                        <span class="tab-label">Calendar</span>
+                    </button>
+                </template>
 
-            <template if:true={showTimeEntry}>
-                <button class={timeEntryTabClass}
-                        role="tab"
-                        data-tab="timeEntry"
-                        aria-selected={isTimeEntryActive}
-                        onclick={handleTabClick}>
-                    <span class="tab-accent"></span>
-                    <span class="tab-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
-                        </svg>
-                    </span>
-                    <span class="tab-label">Time Entry</span>
-                </button>
-            </template>
+            </nav>
 
-            <template if:true={showCalendar}>
-                <button class={calendarTabClass}
-                        role="tab"
-                        data-tab="calendar"
-                        aria-selected={isCalendarActive}
-                        onclick={handleTabClick}>
-                    <span class="tab-accent"></span>
-                    <span class="tab-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                        </svg>
-                    </span>
-                    <span class="tab-label">Calendar &amp; Events</span>
-                </button>
-            </template>
+            <div class="bar-fill"></div>
 
-            <div class="tab-fill"></div>
-
-            <!-- Profile badge -->
             <template if:true={isReady}>
-                <div class="profile-badge" title={profileName}>
-                    {profileBadgeLabel}
+                <div class="bar-user" title={profileName}>
+                    <span class="bar-user-dot"></span>
+                    <span class="bar-user-name">{firstName}</span>
+                    <span class="bar-user-role">{profileBadgeLabel}</span>
                 </div>
             </template>
 
-        </nav>
+        </div>
 
-        <!-- ── Loading state ─────────────────────────────────────────── -->
-        <template if:false={isReady}>
-            <div class="workspace-loading">
-                <div class="loading-bar">
-                    <div class="loading-bar-fill"></div>
-                </div>
-                <span class="loading-label">Loading workspace…</span>
-            </div>
-        </template>
-
-        <!-- ── Tab panels (CSS-toggled to preserve child state) ──────── -->
+        <!-- ── Tab panels (CSS-toggled to preserve child state) ──────────── -->
         <template if:true={isReady}>
             <div class="workspace-body">
 

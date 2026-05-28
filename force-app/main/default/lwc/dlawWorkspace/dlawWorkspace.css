@@ -9,101 +9,76 @@
     min-height: 200px;
 }
 
-/* ── Brand header ──────────────────────────────────────────────────── */
-.workspace-header {
-    background: linear-gradient(135deg, #1a1f36 0%, #0f172a 100%);
-    padding: 11px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    min-height: 48px;
+/* ── 2px top loading track ─────────────────────────────────────────── */
+.load-track {
+    height: 2px;
+    background: rgba(15,23,42,.5);
+    overflow: hidden;
 }
 
-.header-brand {
+.load-fill {
+    height: 100%;
+    width: 35%;
+    background: #3b82f6;
+    animation: load-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes load-slide {
+    0%   { transform: translateX(-300%); }
+    100% { transform: translateX(420%); }
+}
+
+/* ── Single workspace bar ──────────────────────────────────────────── */
+.workspace-bar {
+    background: linear-gradient(135deg, #1a1f36 0%, #0f172a 100%);
+    display: flex;
+    align-items: stretch;
+    height: 44px;
+    padding: 0 4px 0 16px;
+}
+
+/* Brand */
+.bar-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    padding-right: 14px;
     user-select: none;
+    flex-shrink: 0;
 }
 
 .brand-glyph {
-    font-size: 18px;
+    font-size: 15px;
     line-height: 1;
-    filter: brightness(1.15);
-}
-
-.brand-text {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
 }
 
 .brand-name {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 800;
     color: #f1f5f9;
-    letter-spacing: .12em;
+    letter-spacing: .14em;
 }
 
-.brand-divider {
-    color: rgba(255,255,255,.25);
-    font-size: 13px;
-}
-
-.brand-product {
-    font-size: 11px;
-    color: #94a3b8;
-    letter-spacing: .08em;
-    font-weight: 400;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.header-user {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: #e2e8f0;
-    font-weight: 500;
-}
-
-.header-user-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #22c55e;
+/* Vertical rule between brand and tabs */
+.bar-divider {
+    width: 1px;
+    background: rgba(255,255,255,.1);
+    margin: 10px 6px;
     flex-shrink: 0;
-    box-shadow: 0 0 5px rgba(34,197,94,.6);
 }
 
-.header-date {
-    font-size: 11px;
-    color: #64748b;
-    white-space: nowrap;
-}
-
-/* ── Tab navigation ────────────────────────────────────────────────── */
-.tab-nav {
-    background: #fff;
+/* Tab group */
+.bar-tabs {
     display: flex;
     align-items: stretch;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 0 12px;
-    gap: 0;
-    min-height: 46px;
 }
 
 .tab-btn {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 7px;
-    padding: 0 18px;
+    gap: 6px;
+    padding: 0 14px;
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
@@ -111,42 +86,27 @@
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
-    color: #6b7280;
+    color: #64748b;
     letter-spacing: .025em;
     white-space: nowrap;
-    margin-bottom: -1px;
     transition: color .14s ease, border-color .14s ease;
     outline: none;
 }
 
 .tab-btn:focus-visible {
-    outline: 2px solid #0176d3;
+    outline: 2px solid #60a5fa;
     outline-offset: -2px;
     border-radius: 3px;
 }
 
 .tab-btn:hover:not(.tab-btn--active) {
-    color: #374151;
-    background: #f9fafb;
+    color: #cbd5e1;
 }
 
 .tab-btn--active {
-    color: #0176d3;
-    border-bottom-color: #0176d3;
+    color: #f1f5f9;
+    border-bottom-color: #3b82f6;
 }
-
-/* Animated top accent bar on active tab */
-.tab-accent {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: transparent;
-    border-radius: 0 0 2px 2px;
-    transition: background .14s ease;
-}
-.tab-btn--active .tab-accent { background: #0176d3; }
 
 .tab-icon {
     display: flex;
@@ -155,86 +115,64 @@
 }
 
 .tab-icon svg {
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
 }
 
 .tab-label { line-height: 1; }
 
-.tab-fill { flex: 1; }
+/* Push user to far right */
+.bar-fill { flex: 1; }
 
-/* Profile badge */
-.profile-badge {
+/* User identity pill */
+.bar-user {
     display: flex;
     align-items: center;
-    align-self: center;
-    background: #f1f5f9;
-    color: #64748b;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: .06em;
-    padding: 3px 9px;
-    border-radius: 20px;
-    border: 1px solid #e2e8f0;
-    white-space: nowrap;
+    gap: 6px;
+    padding: 0 12px;
     cursor: default;
     user-select: none;
-    margin-right: 4px;
+    flex-shrink: 0;
 }
 
-/* ── Loading state ─────────────────────────────────────────────────── */
-.workspace-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    padding: 60px 20px;
+.bar-user-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+    box-shadow: 0 0 5px rgba(34,197,94,.55);
 }
 
-.loading-bar {
-    width: 200px;
-    height: 3px;
-    background: #e5e7eb;
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.loading-bar-fill {
-    height: 100%;
-    width: 40%;
-    background: #0176d3;
-    border-radius: 3px;
-    animation: loading-slide 1.4s ease-in-out infinite;
-}
-
-@keyframes loading-slide {
-    0%   { transform: translateX(-100%); }
-    100% { transform: translateX(350%); }
-}
-
-.loading-label {
+.bar-user-name {
     font-size: 12px;
-    color: #9ca3af;
-    letter-spacing: .04em;
+    color: #e2e8f0;
+    font-weight: 500;
+}
+
+.bar-user-role {
+    font-size: 10px;
+    font-weight: 700;
+    color: #94a3b8;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    padding: 2px 7px;
+    border-radius: 10px;
+    letter-spacing: .06em;
 }
 
 /* ── Workspace body ────────────────────────────────────────────────── */
-.workspace-body {
-    padding: 0;
-}
+.workspace-body { padding: 0; }
 
-/* ── Tab panels (all mounted; visibility via CSS, not if:true) ─────── */
-.tab-panel {
-    display: none;
-}
+/* ── Tab panels (all mounted; CSS toggles visibility) ──────────────── */
+.tab-panel { display: none; }
 
 .tab-panel--active {
     display: block;
-    animation: panel-in .2s ease;
+    animation: panel-in .18s ease;
 }
 
 @keyframes panel-in {
-    from { opacity: 0; transform: translateY(6px); }
+    from { opacity: 0; transform: translateY(4px); }
     to   { opacity: 1; transform: translateY(0); }
 }

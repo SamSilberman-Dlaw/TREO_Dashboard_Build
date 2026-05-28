@@ -72,12 +72,6 @@ export default class DlawWorkspace extends LightningElement {
         return p.split(' ').map(w => w[0]).join('').slice(0, 6);
     }
 
-    get formattedDate() {
-        return new Date().toLocaleDateString('en-US', {
-            weekday: 'long', month: 'long', day: 'numeric'
-        });
-    }
-
     // ── Handlers ─────────────────────────────────────────────────────────
 
     handleTabClick(event) {
