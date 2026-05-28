@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Related_Time_Entry__c</fullName>
+    <label>Related Time Entry</label>
+    <type>Lookup</type>
+    <referenceTo>Time_Entry__c</referenceTo>
+    <relationshipName>Related_Tasks</relationshipName>
+    <relationshipLabel>Related Tasks</relationshipLabel>
+</CustomField>

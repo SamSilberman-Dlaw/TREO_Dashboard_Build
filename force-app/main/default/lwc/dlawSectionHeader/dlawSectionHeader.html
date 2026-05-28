@@ -1,0 +1,19 @@
+<template>
+    <div class={containerClass}>
+        <div class="header-content">
+            <template if:true={iconName}>
+                <lightning-icon
+                    icon-name={iconName}
+                    size="small"
+                    class="slds-var-m-right_x-small header-icon"
+                ></lightning-icon>
+            </template>
+            <div>
+                <h2 class={headingClass}>{label}</h2>
+                <template if:true={subtitle}>
+                    <p class="slds-text-body_small slds-text-color_weak slds-var-m-top_xx-small">{subtitle}</p>
+                </template>
+            </div>
+        </div>
+    </div>
+</template>

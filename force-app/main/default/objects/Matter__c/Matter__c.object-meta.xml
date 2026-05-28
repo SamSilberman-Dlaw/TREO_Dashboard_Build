@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Matter</label>
+    <pluralLabel>Matters</pluralLabel>
+    <nameField>
+        <label>Matter Name</label>
+        <type>Text</type>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <enableHistory>true</enableHistory>
+    <enableActivities>true</enableActivities>
+    <searchLayouts>
+        <searchResultsAdditionalFields>Case_Number__c</searchResultsAdditionalFields>
+        <searchResultsAdditionalFields>Status__c</searchResultsAdditionalFields>
+        <searchResultsAdditionalFields>Assigned_Attorney__c</searchResultsAdditionalFields>
+    </searchLayouts>
+</CustomObject>

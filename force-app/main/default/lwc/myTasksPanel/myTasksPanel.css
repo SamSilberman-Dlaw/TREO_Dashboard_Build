@@ -1,0 +1,114 @@
+:host {
+    --c-border:  #e5e7eb;
+    --c-ink:     #1a1f36;
+    --c-muted:   #6b7280;
+    --c-red:     #e74c3c;
+    --c-orange:  #f39c12;
+    --c-blue:    #1b6bc4;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Monaco', monospace;
+    display: block;
+    font-family: var(--font-mono);
+}
+
+.tasks-container {
+    padding: 14px 18px;
+}
+.tasks-container--compact {
+    border-bottom: 1px solid var(--c-border);
+}
+
+.section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.section-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    color: var(--c-muted);
+}
+.section-sub {
+    font-size: 9px;
+    color: var(--c-muted);
+}
+
+.task-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--c-border);
+}
+.task-row:last-child { border-bottom: none; }
+.task-row--done { opacity: .55; }
+.task-row--overdue .task-subject { color: var(--c-red); }
+
+.task-check { padding-top: 2px; flex-shrink: 0; }
+
+.task-checkbox {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: var(--c-blue);
+}
+
+.task-body { flex: 1; min-width: 0; }
+
+.task-subject {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--c-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-matter {
+    font-size: 10px;
+    color: var(--c-muted);
+    margin-top: 2px;
+}
+
+.task-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.task-due {
+    font-size: 10px;
+    color: var(--c-muted);
+    white-space: nowrap;
+}
+.task-due--today   { color: var(--c-orange); font-weight: 600; }
+.task-due--overdue { color: var(--c-red);    font-weight: 700; }
+.task-due--done    { color: var(--c-muted); }
+
+.task-est {
+    font-size: 10px;
+    color: var(--c-muted);
+}
+
+.add-time-link {
+    background: none;
+    border: none;
+    color: var(--c-blue);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+}
+.add-time-link:hover { text-decoration: underline; }
+
+.empty-state {
+    font-size: 11px;
+    color: var(--c-muted);
+    padding: 16px 0;
+    text-align: center;
+}

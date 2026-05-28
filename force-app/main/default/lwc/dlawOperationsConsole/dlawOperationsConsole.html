@@ -1,0 +1,818 @@
+<template>
+    <lightning-card title="D.Law Operations Console">
+
+        <div slot="actions" class="header-actions">
+            <template if:true={lastRefreshLabel}>
+                <span class="last-refresh-label">Updated {lastRefreshLabel}</span>
+            </template>
+            <button type="button" class="refresh-btn" onclick={handleRefresh}
+                    title="Refresh data" disabled={isRefreshing}>
+                {refreshBtnLabel}
+            </button>
+        </div>
+
+        <div class="today-bar slds-var-p-horizontal_medium">Welcome, {firstName}  ·  {todayLabel}</div>
+
+        <template if:true={isLoading}>
+            <div class="slds-var-p-around_large slds-text-align_center">
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </div>
+        </template>
+
+        <template if:false={isLoading}>
+            <div class="console-body">
+
+                <!-- ── Summary Cards ── -->
+                <div class="summary-row slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+
+                    <!-- Today's Time -->
+                    <div class="sc sc--blue sc--clickable" onclick={handleTodayTimeReportClick}>
+                        <div class="sc-main">
+                            <div class="sc-value">{todayHoursDisplay}</div>
+                            <div class="sc-label">Today's Time ↗</div>
+                        </div>
+                        <div class="sc-visual">
+                            <div class="sc-icon-wrap sc-icon-wrap--blue">⏱</div>
+                        </div>
+                    </div>
+
+                    <!-- This Week's Time -->
+                    <div class="sc sc--indigo sc--clickable" onclick={handleLast7ReportClick}>
+                        <div class="sc-main">
+                            <div class="sc-value sc-value--indigo">{last7HoursDisplay}</div>
+                            <div class="sc-label">This Week's Time ↗</div>
+                        </div>
+                        <div class="sc-visual">
+                            <template if:true={hasLast7Data}>
+                                <div class="sc-sparkline">
+                                    <template for:each={last7ByDate} for:item="row">
+                                        <div key={row.date} class="sc-spark-bar"
+                                             style={row.sparkStyle}
+                                             data-label={row.tooltipLabel}></div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template if:false={hasLast7Data}>
+                                <div class="sc-icon-wrap sc-icon-wrap--indigo">📅</div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Open Tasks -->
+                    <div class={summaryTasksCardClass} onclick={handleTasksReportClick}>
+                        <div class="sc-main">
+                            <div class={summaryTasksValueClass}>{openTaskCount}</div>
+                            <div class="sc-label">Open Tasks ↗</div>
+                            <template if:true={hasOverdueTasks}>
+                                <div class="sc-sub sc-sub--warn">{overdueTaskCount} overdue</div>
+                            </template>
+                            <template if:false={hasOverdueTasks}>
+                                <div class="sc-sub">All on track</div>
+                            </template>
+                        </div>
+                        <div class="sc-visual">
+                            <div class={summaryTasksIconClass}>☑</div>
+                        </div>
+                    </div>
+
+                    <!-- Events Today -->
+                    <div class={eventsTodayCardClass} onclick={handleEventsReportClick}>
+                        <div class="sc-main">
+                            <div class="sc-value sc-value--teal">{eventsToday}</div>
+                            <div class="sc-label">Events Today ↗</div>
+                            <div class="sc-sub">{eventsTodaySub}</div>
+                        </div>
+                        <div class="sc-visual">
+                            <div class={eventsTodayIconClass}>📅</div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ── Grid Content ── -->
+                <div class="console-content slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+
+                    <!-- Critical Deadlines -->
+                    <div class="panel panel--deadlines">
+                        <div class="panel-header">
+                            <span>{criticalDeadlinesHeader}</span>
+                        </div>
+                        <div class="panel-filters-row">
+                            <div class="task-filter-bar">
+                                <button type="button" class={dlFilterWeekClass}
+                                        data-filter="week" onclick={handleDeadlinesFilter}>Week</button>
+                                <button type="button" class={dlFilter1MClass}
+                                        data-filter="month" onclick={handleDeadlinesFilter}>1 Mo</button>
+                                <button type="button" class={dlFilter3MClass}
+                                        data-filter="90" onclick={handleDeadlinesFilter}>3 Mo</button>
+                                <button type="button" class={dlFilter6MClass}
+                                        data-filter="180" onclick={handleDeadlinesFilter}>6 Mo</button>
+                                <button type="button" class={dlFilter9MClass}
+                                        data-filter="270" onclick={handleDeadlinesFilter}>9 Mo</button>
+                                <button type="button" class={dlFilter12MClass}
+                                        data-filter="360" onclick={handleDeadlinesFilter}>12 Mo</button>
+                            </div>
+                        </div>
+                        <div class="type-filter-row">
+                            <select class="type-filter-select" onchange={handleTypeFilter}>
+                                <option value="">All Types</option>
+                                <template for:each={typeFilters} for:item="tf">
+                                    <option key={tf.key} value={tf.key}>{tf.label}</option>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="panel-scroll">
+                            <template if:true={hasCriticalDeadlines}>
+
+                                <!-- Today -->
+                                <template if:true={hasTodayDeadlines}>
+                                    <button type="button" class="event-group-toggle" onclick={toggleDlTodayGroup}>
+                                        <span class="event-group-toggle-icon">{dlTodayIcon}</span>
+                                        Today
+                                        <span class="event-group-count">{todayDeadlines.length}</span>
+                                    </button>
+                                    <template if:false={dlTodayCollapsed}>
+                                        <template for:each={todayDeadlines} for:item="dl">
+                                            <div key={dl.id} class="deadline-item"
+                                                 data-id={dl.id}
+                                                 onclick={handleDeadlineClick}
+                                                 onmouseenter={handleDeadlineMouseEnter}
+                                                 onmouseleave={handleDeadlineMouseLeave}>
+                                                <div class={dl.dotClass}></div>
+                                                <div class="deadline-body">
+                                                    <div class="deadline-top">
+                                                        <span class="deadline-days">{dl.daysLabel}</span>
+                                                        <span class={dl.typeBadgeClass}>{dl.eventType}</span>
+                                                    </div>
+                                                    <div class="deadline-matter">{dl.matterName}</div>
+                                                    <div class="deadline-date">{dl.dateLabel}</div>
+                                                </div>
+                                                <div class="deadline-arrow">›</div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+
+                                <!-- This Week -->
+                                <template if:true={hasWeekDeadlines}>
+                                    <button type="button" class="event-group-toggle" onclick={toggleDlWeekGroup}>
+                                        <span class="event-group-toggle-icon">{dlWeekIcon}</span>
+                                        This Week
+                                        <span class="event-group-count">{weekDeadlines.length}</span>
+                                    </button>
+                                    <template if:false={dlWeekCollapsed}>
+                                        <template for:each={weekDeadlines} for:item="dl">
+                                            <div key={dl.id} class="deadline-item"
+                                                 data-id={dl.id}
+                                                 onclick={handleDeadlineClick}
+                                                 onmouseenter={handleDeadlineMouseEnter}
+                                                 onmouseleave={handleDeadlineMouseLeave}>
+                                                <div class={dl.dotClass}></div>
+                                                <div class="deadline-body">
+                                                    <div class="deadline-top">
+                                                        <span class="deadline-days">{dl.daysLabel}</span>
+                                                        <span class={dl.typeBadgeClass}>{dl.eventType}</span>
+                                                    </div>
+                                                    <div class="deadline-matter">{dl.matterName}</div>
+                                                    <div class="deadline-date">{dl.dateLabel}</div>
+                                                </div>
+                                                <div class="deadline-arrow">›</div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+
+                                <!-- This Month -->
+                                <template if:true={hasMonthDeadlines}>
+                                    <button type="button" class="event-group-toggle" onclick={toggleDlMonthGroup}>
+                                        <span class="event-group-toggle-icon">{dlMonthIcon}</span>
+                                        This Month
+                                        <span class="event-group-count">{monthDeadlines.length}</span>
+                                    </button>
+                                    <template if:false={dlMonthCollapsed}>
+                                        <template for:each={monthDeadlines} for:item="dl">
+                                            <div key={dl.id} class="deadline-item"
+                                                 data-id={dl.id}
+                                                 onclick={handleDeadlineClick}
+                                                 onmouseenter={handleDeadlineMouseEnter}
+                                                 onmouseleave={handleDeadlineMouseLeave}>
+                                                <div class={dl.dotClass}></div>
+                                                <div class="deadline-body">
+                                                    <div class="deadline-top">
+                                                        <span class="deadline-days">{dl.daysLabel}</span>
+                                                        <span class={dl.typeBadgeClass}>{dl.eventType}</span>
+                                                    </div>
+                                                    <div class="deadline-matter">{dl.matterName}</div>
+                                                    <div class="deadline-date">{dl.dateLabel}</div>
+                                                </div>
+                                                <div class="deadline-arrow">›</div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+
+                                <!-- Later -->
+                                <template if:true={hasBeyondDeadlines}>
+                                    <button type="button" class="event-group-toggle" onclick={toggleDlBeyondGroup}>
+                                        <span class="event-group-toggle-icon">{dlBeyondIcon}</span>
+                                        Later
+                                        <span class="event-group-count">{beyondDeadlines.length}</span>
+                                    </button>
+                                    <template if:false={dlBeyondCollapsed}>
+                                        <template for:each={beyondDeadlines} for:item="dl">
+                                            <div key={dl.id} class="deadline-item"
+                                                 data-id={dl.id}
+                                                 onclick={handleDeadlineClick}
+                                                 onmouseenter={handleDeadlineMouseEnter}
+                                                 onmouseleave={handleDeadlineMouseLeave}>
+                                                <div class={dl.dotClass}></div>
+                                                <div class="deadline-body">
+                                                    <div class="deadline-top">
+                                                        <span class="deadline-days">{dl.daysLabel}</span>
+                                                        <span class={dl.typeBadgeClass}>{dl.eventType}</span>
+                                                    </div>
+                                                    <div class="deadline-matter">{dl.matterName}</div>
+                                                    <div class="deadline-date">{dl.dateLabel}</div>
+                                                </div>
+                                                <div class="deadline-arrow">›</div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+
+                            </template>
+                            <template if:false={hasCriticalDeadlines}>
+                                <div class="panel-empty">
+                                    <span class="panel-empty__icon">⚖</span>
+                                    <span>{criticalDeadlinesEmptyMessage}</span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Associate Events -->
+                    <div class="panel panel--associate">
+                        <div class="panel-header">
+                            <span>{associateEventsHeader}</span>
+                        </div>
+                        <div class="panel-filters-row">
+                            <div class="task-filter-bar">
+                                <button type="button" class={assocFilterWeekClass}
+                                        data-filter="week" onclick={handleAssocFilter}>Week</button>
+                                <button type="button" class={assocFilter1MClass}
+                                        data-filter="month" onclick={handleAssocFilter}>1 Mo</button>
+                                <button type="button" class={assocFilter3MClass}
+                                        data-filter="90" onclick={handleAssocFilter}>3 Mo</button>
+                                <button type="button" class={assocFilter6MClass}
+                                        data-filter="180" onclick={handleAssocFilter}>6 Mo</button>
+                                <button type="button" class={assocFilter9MClass}
+                                        data-filter="270" onclick={handleAssocFilter}>9 Mo</button>
+                                <button type="button" class={assocFilter12MClass}
+                                        data-filter="360" onclick={handleAssocFilter}>12 Mo</button>
+                            </div>
+                        </div>
+                        <div class="type-filter-row">
+                            <select class="type-filter-select" onchange={handleAssocTypeFilter}>
+                                <option value="">All Types</option>
+                                <template for:each={assocTypeFilters} for:item="tf">
+                                    <option key={tf.key} value={tf.key}>{tf.label}</option>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="panel-scroll">
+                            <template if:true={hasAssociateEvents}>
+
+                                <!-- Today -->
+                                <template if:true={hasTodayAssociate}>
+                                    <button type="button" class="event-group-toggle" onclick={toggleTodayGroup}>
+                                        <span class="event-group-toggle-icon">{todayGroupIcon}</span>
+                                        Today
+                                        <span class="event-group-count">{todayAssociate.length}</span>
+                                    </button>
+                                    <template if:false={todayGroupCollapsed}>
+                                        <template for:each={todayAssociate} for:item="ev">
+                                            <div key={ev.id} class="assoc-item"
+                                                 data-id={ev.id}
+                                                 onclick={handleMyEventClick}
+                                                 onmouseenter={handleEventMouseEnter}
+                                                 onmouseleave={handleEventMouseLeave}>
+                                                <div class={ev.dotClass}></div>
+                                                <div class="deadline-body">
+                                                    <div class="deadline-top">
+                                                        <span class="deadline-days">{ev.daysLabel}</span>
+                                                        <span class={ev.typeBadgeClass}>{ev.eventType}</span>
+                                                    </div>
+                                                    <div class="deadline-matter">{ev.matterName}</div>
+                                                    <div class="deadline-date">{ev.dateLabel}</div>
+                                                </div>
+                                                <div class="deadline-arrow">›</div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+
+                                <!-- This Week -->
+                                <template if:true={hasWeekAssociate}>
+                                    <button type="button" class="event-group-toggle" onclick={toggleWeekGroup}>
+                                        <span class="event-group-toggle-icon">{weekGroupIcon}</span>
+                                        This Week
+                                        <span class="event-group-count">{weekAssociate.length}</span>
+                                    </button>
+                                    <template if:false={weekGroupCollapsed}>
+                                        <template for:each={weekAssociate} for:item="ev">
+                                            <div key={ev.id} class="assoc-item"
+                                                 data-id={ev.id}
+                                                 onclick={handleMyEventClick}
+                                                 onmouseenter={handleEventMouseEnter}
+                                                 onmouseleave={handleEventMouseLeave}>
+                                                <div class={ev.dotClass}></div>
+                                                <div class="deadline-body">
+                                                    <div class="deadline-top">
+                                                        <span class="deadline-days">{ev.daysLabel}</span>
+                                                        <span class={ev.typeBadgeClass}>{ev.eventType}</span>
+                                                    </div>
+                                                    <div class="deadline-matter">{ev.matterName}</div>
+                                                    <div class="deadline-date">{ev.dateLabel}</div>
+                                                </div>
+                                                <div class="deadline-arrow">›</div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+
+                                <!-- This Month -->
+                                <template if:true={hasMonthAssociate}>
+                                    <button type="button" class="event-group-toggle" onclick={toggleMonthGroup}>
+                                        <span class="event-group-toggle-icon">{monthGroupIcon}</span>
+                                        This Month
+                                        <span class="event-group-count">{monthAssociate.length}</span>
+                                    </button>
+                                    <template if:false={monthGroupCollapsed}>
+                                        <template for:each={monthAssociate} for:item="ev">
+                                            <div key={ev.id} class="assoc-item"
+                                                 data-id={ev.id}
+                                                 onclick={handleMyEventClick}
+                                                 onmouseenter={handleEventMouseEnter}
+                                                 onmouseleave={handleEventMouseLeave}>
+                                                <div class={ev.dotClass}></div>
+                                                <div class="deadline-body">
+                                                    <div class="deadline-top">
+                                                        <span class="deadline-days">{ev.daysLabel}</span>
+                                                        <span class={ev.typeBadgeClass}>{ev.eventType}</span>
+                                                    </div>
+                                                    <div class="deadline-matter">{ev.matterName}</div>
+                                                    <div class="deadline-date">{ev.dateLabel}</div>
+                                                </div>
+                                                <div class="deadline-arrow">›</div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+
+                                <!-- Later -->
+                                <template if:true={hasBeyondAssociate}>
+                                    <button type="button" class="event-group-toggle" onclick={toggleBeyondGroup}>
+                                        <span class="event-group-toggle-icon">{beyondGroupIcon}</span>
+                                        Later
+                                        <span class="event-group-count">{beyondAssociate.length}</span>
+                                    </button>
+                                    <template if:false={beyondGroupCollapsed}>
+                                        <template for:each={beyondAssociate} for:item="ev">
+                                            <div key={ev.id} class="assoc-item"
+                                                 data-id={ev.id}
+                                                 onclick={handleMyEventClick}
+                                                 onmouseenter={handleEventMouseEnter}
+                                                 onmouseleave={handleEventMouseLeave}>
+                                                <div class={ev.dotClass}></div>
+                                                <div class="deadline-body">
+                                                    <div class="deadline-top">
+                                                        <span class="deadline-days">{ev.daysLabel}</span>
+                                                        <span class={ev.typeBadgeClass}>{ev.eventType}</span>
+                                                    </div>
+                                                    <div class="deadline-matter">{ev.matterName}</div>
+                                                    <div class="deadline-date">{ev.dateLabel}</div>
+                                                </div>
+                                                <div class="deadline-arrow">›</div>
+                                            </div>
+                                        </template>
+                                    </template>
+                                </template>
+
+                            </template>
+                            <template if:false={hasAssociateEvents}>
+                                <div class="panel-empty">
+                                    <span class="panel-empty__icon">📅</span>
+                                    <span>No events in this range</span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- My Tasks -->
+                    <div class="panel panel--tasks">
+                        <div class="panel-header tasks-panel-header">
+                            <span>{tasksHeader}</span>
+                            <div class="task-filter-bar">
+                                <button type="button" class={taskFilterWeekClass}
+                                        data-filter="week" onclick={handleTaskFilter}>Week</button>
+                                <button type="button" class={taskFilter1MClass}
+                                        data-filter="month" onclick={handleTaskFilter}>1 Mo</button>
+                                <button type="button" class={taskFilter3MClass}
+                                        data-filter="90" onclick={handleTaskFilter}>3 Mo</button>
+                                <button type="button" class={taskFilter6MClass}
+                                        data-filter="180" onclick={handleTaskFilter}>6 Mo</button>
+                                <button type="button" class={taskFilter9MClass}
+                                        data-filter="270" onclick={handleTaskFilter}>9 Mo</button>
+                                <button type="button" class={taskFilter12MClass}
+                                        data-filter="360" onclick={handleTaskFilter}>12 Mo</button>
+                            </div>
+                        </div>
+                        <template if:true={hasTasks}>
+                            <div class="tasks-table-wrap">
+                                <table class="tasks-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="tasks-th">Matter</th>
+                                            <th class="tasks-th">Subject</th>
+                                            <th class="tasks-th">Task Subtype</th>
+                                            <th class="tasks-th">Priority</th>
+                                            <th class="tasks-th">Status</th>
+                                            <th class="tasks-th">Due</th>
+                                            <th class="tasks-th tasks-th--action"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template for:each={myTasks} for:item="t">
+                                            <tr key={t.id} class={t.rowClass}>
+                                                <td class="tasks-td tasks-td--matter">
+                                                    <template if:true={t.hasMatterLink}>
+                                                        <button type="button" class="tasks-matter-link"
+                                                                data-id={t.matterId}
+                                                                onclick={handleOpenMatterById}>{t.matterName}</button>
+                                                    </template>
+                                                    <template if:false={t.hasMatterLink}>
+                                                        {t.matterName}
+                                                    </template>
+                                                </td>
+                                                <td class="tasks-td">{t.subject}</td>
+                                                <td class="tasks-td">{t.taskType}</td>
+                                                <td class="tasks-td">{t.priority}</td>
+                                                <td class="tasks-td">{t.status}</td>
+                                                <td class="tasks-td tasks-td--date">
+                                                    <span class={t.dueBadgeClass}>{t.dueLabel}</span>
+                                                </td>
+                                                <td class="tasks-td tasks-td--action">
+                                                    <input type="checkbox"
+                                                           class="task-check"
+                                                           checked={t.isCompleted}
+                                                           data-id={t.id}
+                                                           title="Mark complete"
+                                                           onchange={handleTaskComplete}>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </template>
+                        <template if:false={hasTasks}>
+                            <div class="panel-empty">
+                                <span class="panel-empty__icon">✓</span>
+                                <span>{tasksEmptyMessage}</span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- ── Time Entry Panel ── -->
+                    <div class="panel panel--timeentry">
+                        <div class="panel-header te-header">
+                            <span>Submit Daily Time</span>
+                            <span class="te-today-total">Today: {todayHoursDisplay}</span>
+                        </div>
+
+                        <!-- ── View: Pick ── -->
+                        <template if:true={isPickView}>
+                            <div class="te-view">
+
+                                <div class="picker-tabs">
+                                    <button type="button" class={myTabClass}
+                                            data-tab="my" onclick={switchPickerTab}>My Cases</button>
+                                    <button type="button" class={allTabClass}
+                                            data-tab="all" onclick={switchPickerTab}>All Cases</button>
+                                </div>
+
+                                <div class="picker-topbar">
+                                    <span class="picker-count-label">{pickerCountLabel}</span>
+                                    <div class="picker-search-wrap">
+                                        <input type="text" class="picker-search-input"
+                                               placeholder="Search by name, jurisdiction, attorney..."
+                                               value={pickerSearch}
+                                               oninput={handlePickerSearch}>
+                                    </div>
+                                </div>
+
+                                <div class="picker-list">
+                                    <template if:true={isPickerLoading}>
+                                        <div class="picker-loading">
+                                            <lightning-spinner size="small" alternative-text="Loading"></lightning-spinner>
+                                        </div>
+                                    </template>
+                                    <template if:false={isPickerLoading}>
+                                        <template if:true={isMyTabEmptyState}>
+                                            <div class="picker-empty-state">
+                                                <div class="picker-empty-msg">No cases assigned to you</div>
+                                                <button type="button" class="picker-empty-cta"
+                                                        onclick={switchToAllCases}>
+                                                    Browse All Cases →
+                                                </button>
+                                            </div>
+                                        </template>
+                                        <template if:false={isMyTabEmptyState}>
+                                            <template if:true={hasPickerMatters}>
+                                                <template for:each={pickerMatters} for:item="m">
+                                                    <div key={m.id} class={m.rowClass}
+                                                         data-id={m.id} onclick={toggleMatterCheck}>
+                                                        <div class="picker-check-icon">
+                                                            <template if:true={m.checked}>&#10003;</template>
+                                                        </div>
+                                                        <div class="picker-matter-info">
+                                                            <span class="picker-matter-name">{m.name}</span>
+                                                            <template if:true={m.hasStaffDetail}>
+                                                                <span class="picker-matter-staff">{m.staffDetail}</span>
+                                                            </template>
+                                                        </div>
+                                                        <template if:true={m.isAdded}>
+                                                            <span class="picker-added-pill">Added ✓</span>
+                                                        </template>
+                                                        <template if:false={m.isAdded}>
+                                                            <template if:true={m.recordType}>
+                                                                <span class="picker-matter-jur-col">{m.recordType}</span>
+                                                            </template>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </template>
+                                            <template if:false={hasPickerMatters}>
+                                                <div class="picker-empty">No matters found</div>
+                                            </template>
+                                        </template>
+                                    </template>
+                                </div>
+
+                                <div class="picker-footer">
+                                    <button type="button" class="te-add-btn"
+                                            disabled={addEntriesDisabled}
+                                            onclick={addSelectedAsEntries}>
+                                        {addEntriesBtnLabel}
+                                    </button>
+                                </div>
+
+                            </div>
+                        </template>
+
+                        <!-- ── View: Fill ── -->
+                        <template if:true={isFillView}>
+                            <div class="te-view">
+
+                                <div class="te-back-bar">
+                                    <button type="button" class="te-back-btn" onclick={handleBackToPick}>
+                                        ← Modify Selection
+                                    </button>
+                                    <span class="te-draft-count">{draftCountLabel}</span>
+                                </div>
+                                <div class="te-batch-bar">
+                                    <div class="te-batch-left">
+                                        <label class="te-batch-label">Set All Dates:</label>
+                                        <input type="date" class="te-batch-date"
+                                               onchange={handleBatchDateChange}>
+                                    </div>
+                                    <button type="button" class="te-collapse-all-btn"
+                                            onclick={toggleAllCollapse}>
+                                        {allCollapseLabel}
+                                    </button>
+                                </div>
+
+                                <div class="te-entry-list">
+                                    <template for:each={draftEntries} for:item="entry">
+                                        <div key={entry._id} class="te-entry-card">
+
+                                            <div class="te-card-header">
+                                                <button type="button" class="te-collapse-btn"
+                                                        data-id={entry._id} onclick={toggleCardCollapse}
+                                                        title="Expand / collapse">
+                                                    {entry.collapseIcon}
+                                                </button>
+                                                <span class="te-card-title">{entry.cardTitle}</span>
+                                                <button type="button" class="te-remove-btn"
+                                                        data-id={entry._id} onclick={removeDraftEntry}>
+                                                    Remove
+                                                </button>
+                                            </div>
+
+                                            <template if:true={entry.collapsed}>
+                                                <template if:true={entry.collapsedSummary}>
+                                                    <div class="te-card-collapsed-summary">{entry.collapsedSummary}</div>
+                                                </template>
+                                            </template>
+
+                                            <template if:false={entry.collapsed}>
+
+                                                <div class="te-field">
+                                                    <label class="te-label">* Staff</label>
+                                                    <lightning-combobox
+                                                        value={entry.staffId}
+                                                        options={staffComboOptions}
+                                                        variant="label-hidden"
+                                                        data-id={entry._id}
+                                                        onchange={handleStaffChange}>
+                                                    </lightning-combobox>
+                                                </div>
+
+                                                <div class="te-field">
+                                                    <label class="te-label">* Entry Date</label>
+                                                    <input type="date" class="te-input"
+                                                           value={entry.entryDate}
+                                                           data-id={entry._id} data-field="entryDate"
+                                                           onchange={handleEntryField}>
+                                                </div>
+
+                                                <div class="te-field">
+                                                    <label class="te-label">* Submit Hours</label>
+                                                    <input type="number" class={entry.hoursClass}
+                                                           min="0" max="24" step="0.25" placeholder="0.0"
+                                                           value={entry.hours}
+                                                           data-id={entry._id} data-field="hours"
+                                                           oninput={handleEntryField}>
+                                                    <div class="te-hours-chips">
+                                                        <button type="button" class="te-hours-chip"
+                                                                data-id={entry._id} data-hours="0.5"
+                                                                onclick={handleQuickHours}>0.5</button>
+                                                        <button type="button" class="te-hours-chip"
+                                                                data-id={entry._id} data-hours="1"
+                                                                onclick={handleQuickHours}>1</button>
+                                                        <button type="button" class="te-hours-chip"
+                                                                data-id={entry._id} data-hours="2"
+                                                                onclick={handleQuickHours}>2</button>
+                                                        <button type="button" class="te-hours-chip"
+                                                                data-id={entry._id} data-hours="4"
+                                                                onclick={handleQuickHours}>4</button>
+                                                        <button type="button" class="te-hours-chip"
+                                                                data-id={entry._id} data-hours="8"
+                                                                onclick={handleQuickHours}>8</button>
+                                                    </div>
+                                                </div>
+
+                                                <div class="te-field">
+                                                    <label class="te-label">* Task Note</label>
+                                                    <textarea class={entry.taskNoteClass}
+                                                              placeholder="Describe work performed..."
+                                                              data-id={entry._id} data-field="taskNote"
+                                                              oninput={handleEntryField}></textarea>
+                                                    <div class={entry.noteCounterClass}>{entry.noteLength} / 32,768</div>
+                                                </div>
+
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <div class="te-submit-wrap">
+                                    <div class={readyEntriesLabelClass}>{readyEntriesLabel}</div>
+                                    <div class="te-total-row">
+                                        <span>Draft Total</span>
+                                        <span class="te-total-val">{draftTotalDisplay}</span>
+                                    </div>
+                                    <button type="button" class="te-submit-btn"
+                                            disabled={submitDisabled}
+                                            onclick={submitAllEntries}>
+                                        {submitLabel}
+                                    </button>
+                                </div>
+
+                            </div>
+                        </template>
+
+                        <!-- ── View: Success ── -->
+                        <template if:true={isSuccessView}>
+                            <div class="te-success">
+                                <div class="te-success-icon">✓</div>
+                                <div class="te-success-title">Time Entries Submitted!</div>
+                                <div class="te-success-count">{successCountLabel}</div>
+
+                                <div class="te-success-list">
+                                    <template for:each={submittedEntries} for:item="e">
+                                        <div key={e._id} class="te-success-entry">
+                                            <button type="button" class="te-success-matter-link"
+                                                    data-id={e.matterId}
+                                                    onclick={handleOpenMatterById}>{e.cardTitle}</button>
+                                            <div class="te-success-meta">{e.staffName} · {e.dateLabel} · {e.hours}h</div>
+                                            <div class="te-success-note">{e.taskNote}</div>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <button type="button" class="te-success-btn" onclick={handleSubmitMore}>
+                                    Submit More Time
+                                </button>
+                            </div>
+                        </template>
+
+                    </div><!-- end panel--timeentry -->
+
+                </div><!-- end console-content -->
+            </div><!-- end console-body -->
+        </template>
+
+        <!-- ── Deadline Detail Drawer ── -->
+        <template if:true={drawerOpen}>
+            <div class="drawer-overlay" onclick={closeDrawer}></div>
+            <div class="drawer">
+                <div class="drawer-header">
+                    <div class={selectedDeadline.dotClass}></div>
+                    <span class="drawer-title">{selectedDeadline.eventType}</span>
+                    <button type="button" class="drawer-close" onclick={closeDrawer}>&#x2715;</button>
+                </div>
+                <div class="drawer-body">
+                    <div class="drawer-field">
+                        <div class="drawer-label">Matter</div>
+                        <div class="drawer-value drawer-value--matter">{selectedDeadline.matterName}</div>
+                    </div>
+                    <div class="drawer-field">
+                        <div class="drawer-label">⏱ Days Remaining</div>
+                        <div class="drawer-value">{selectedDeadline.daysLabel}</div>
+                    </div>
+                    <div class="drawer-field">
+                        <div class="drawer-label">📅 Start</div>
+                        <div class="drawer-value">{selectedDeadline.dateLabel}</div>
+                    </div>
+                    <template if:true={selectedDeadline.endDateLabel}>
+                        <div class="drawer-field">
+                            <div class="drawer-label">📅 End</div>
+                            <div class="drawer-value">{selectedDeadline.endDateLabel}</div>
+                        </div>
+                    </template>
+                    <template if:true={selectedDeadline.attendees}>
+                        <div class="drawer-field">
+                            <div class="drawer-label">👤 Attendees</div>
+                            <div class="drawer-value">{selectedDeadline.attendees}</div>
+                        </div>
+                    </template>
+                    <template if:true={selectedDeadline.location}>
+                        <div class="drawer-field">
+                            <div class="drawer-label">📍 Location</div>
+                            <div class="drawer-value">{selectedDeadline.location}</div>
+                        </div>
+                    </template>
+                    <template if:true={selectedDeadline.description}>
+                        <div class="drawer-field">
+                            <div class="drawer-label">📝 Description</div>
+                            <div class="drawer-value drawer-value--description">{selectedDeadline.description}</div>
+                        </div>
+                    </template>
+                    <div class="drawer-actions">
+                        <button type="button" class="drawer-open-btn drawer-open-btn--secondary" onclick={handleOpenEvent}>
+                            Open Event ›
+                        </button>
+                        <template if:true={selectedDeadline.hasMatterLink}>
+                            <button type="button" class="drawer-open-btn" onclick={handleOpenMatter}>
+                                Open Matter ›
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- ── My Events hover tooltip ── -->
+        <template if:true={isTooltipVisible}>
+            <div class="assoc-event-tooltip">
+                <div class="aet-subject">{tooltipEvent.subject}</div>
+                <template if:true={tooltipEvent.eventType}>
+                    <div class="aet-type">{tooltipEvent.eventType}</div>
+                </template>
+                <template if:true={tooltipEvent.daysLabel}>
+                    <div class="aet-row">⏱ {tooltipEvent.daysLabel}</div>
+                </template>
+                <template if:true={tooltipEvent.timeRange}>
+                    <div class="aet-row">🕐 {tooltipEvent.timeRange}</div>
+                </template>
+                <template if:true={tooltipEvent.dayLabel}>
+                    <div class="aet-row">📅 {tooltipEvent.dayLabel}</div>
+                </template>
+                <template if:true={tooltipEvent.matterName}>
+                    <div class="aet-row">⚖ {tooltipEvent.matterName}</div>
+                </template>
+                <template if:true={tooltipEvent.attendees}>
+                    <div class="aet-row">👤 {tooltipEvent.attendees}</div>
+                </template>
+                <template if:true={tooltipEvent.location}>
+                    <div class="aet-row">📍 {tooltipEvent.location}</div>
+                </template>
+                <template if:true={tooltipEvent.description}>
+                    <div class="aet-row aet-description">📝 {tooltipEvent.description}</div>
+                </template>
+            </div>
+        </template>
+
+    </lightning-card>
+</template>

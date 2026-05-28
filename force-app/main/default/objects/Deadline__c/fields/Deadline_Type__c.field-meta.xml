@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Deadline_Type__c</fullName>
+    <label>Deadline Type</label>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>Trial</fullName><default>false</default><label>Trial</label></value>
+            <value><fullName>SOL</fullName><default>false</default><label>SOL</label></value>
+            <value><fullName>Class Cert Motion</fullName><default>false</default><label>Class Cert Motion</label></value>
+            <value><fullName>Arb Trial</fullName><default>false</default><label>Arb Trial</label></value>
+            <value><fullName>MSC</fullName><default>false</default><label>MSC</label></value>
+            <value><fullName>Mediation</fullName><default>false</default><label>Mediation</label></value>
+            <value><fullName>Deposition</fullName><default>false</default><label>Deposition</label></value>
+            <value><fullName>Expert Disclosure</fullName><default>false</default><label>Expert Disclosure</label></value>
+            <value><fullName>Discovery Cutoff</fullName><default>false</default><label>Discovery Cutoff</label></value>
+            <value><fullName>Motion Filing</fullName><default>false</default><label>Motion Filing</label></value>
+            <value><fullName>Associate Deadline</fullName><default>false</default><label>Associate Deadline</label></value>
+            <value><fullName>General Event</fullName><default>false</default><label>General Event</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

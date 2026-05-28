@@ -1,0 +1,35 @@
+<template>
+    <div class={containerClass}>
+        <div class="section-header">
+            <span class="section-title">ASSOCIATE DEADLINES / EVENTS</span>
+        </div>
+
+        <template if:true={hasTodayEvents}>
+            <div class="group-label">TODAY</div>
+            <template for:each={todayEvents} for:item="ev">
+                <div key={ev.id} class="event-row">
+                    <span class="initials-badge">{ev.associateInitials}</span>
+                    <span class="event-subject">{ev.subject}</span>
+                    <span class="event-matter">{ev.matterName}</span>
+                    <span class="event-time">{ev.timeLabel}</span>
+                </div>
+            </template>
+        </template>
+
+        <template if:true={hasWeekEvents}>
+            <div class="group-label">THIS WEEK</div>
+            <template for:each={weekEvents} for:item="ev">
+                <div key={ev.id} class="event-row">
+                    <span class="initials-badge">{ev.associateInitials}</span>
+                    <span class="event-subject">{ev.subject}</span>
+                    <span class="event-matter">{ev.matterName}</span>
+                    <span class="event-day">{ev.dayLabel}</span>
+                </div>
+            </template>
+        </template>
+
+        <template if:false={hasAnyEvents}>
+            <div class="empty-state">No associate events this week</div>
+        </template>
+    </div>
+</template>

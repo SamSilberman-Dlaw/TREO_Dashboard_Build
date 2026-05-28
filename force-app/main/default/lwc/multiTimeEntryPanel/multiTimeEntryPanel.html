@@ -1,0 +1,106 @@
+<template>
+    <div class="entry-panel">
+
+        <div class="section-header">
+            <span class="section-title">{panelTitle}</span>
+        </div>
+
+        <!-- ── Draft entries list ──────────────────────────────────────── -->
+        <template if:true={hasDraftEntries}>
+            <template if:false={isExpanded}>
+                <div class="subsection-label">DRAFT ENTRIES</div>
+                <div class="draft-divider"></div>
+            </template>
+
+            <template for:each={indexedEntries} for:item="entry">
+                <c-time-entry-row
+                    key={entry._localId}
+                    entry={entry}
+                    is-expanded={isExpanded}
+                    entry-index={entry._index}
+                    onentrychange={handleEntryChange}
+                    ondeleteentry={handleDeleteEntry}
+                    onduplicateentry={handleDuplicateEntry}>
+                </c-time-entry-row>
+            </template>
+        </template>
+
+        <!-- ── Quick entry form (collapsed mode) ──────────────────────── -->
+        <template if:false={isExpanded}>
+            <div class="quick-form">
+                <div class="qf-row">
+                    <label class="qf-label">Matter</label>
+                    <div class="matter-wrap">
+                        <input
+                            type="text"
+                            class="qf-input"
+                            placeholder="Search matter..."
+                            value={newEntry.matterName}
+                            oninput={handleMatterInput}
+                            onfocus={handleMatterFocus}
+                            onblur={handleMatterBlur}
+                        />
+                        <template if:true={showDropdown}>
+                            <div class="matter-dropdown">
+                                <template for:each={matterResults} for:item="m">
+                                    <div key={m.id}
+                                         class="matter-option"
+                                         data-id={m.id}
+                                         data-name={m.name}
+                                         onmousedown={handleSelectMatter}>
+                                        <span class="opt-name">{m.name}</span>
+                                        <span class="opt-case">{m.caseNumber}</span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                <div class="qf-row">
+                    <label class="qf-label">Task</label>
+                    <input type="text" class="qf-input" placeholder="Optional task..."
+                           value={newEntry.taskName} oninput={handleTaskInput} />
+                </div>
+                <div class="qf-row">
+                    <label class="qf-label">Hours</label>
+                    <input type="number" class="qf-input qf-input--num"
+                           min="0" max="24" step="0.1"
+                           value={newEntry.hours} onchange={handleHoursInput} />
+                </div>
+                <div class="qf-row">
+                    <label class="qf-label">Narrative</label>
+                    <textarea class="qf-textarea" rows="2"
+                              oninput={handleNarrativeInput}>{newEntry.narrative}</textarea>
+                </div>
+                <button class="btn-add" onclick={handleAddQuickEntry}>Add Entry</button>
+            </div>
+        </template>
+
+        <!-- ── Expanded: Add entry + totals ───────────────────────────── -->
+        <template if:true={isExpanded}>
+            <button class="btn-add-another" onclick={handleAddBlankEntry}>+ Add Another Entry</button>
+            <div class="totals-block">
+                <div class="total-row">
+                    <span class="total-label">TOTAL TODAY</span>
+                    <span class="total-value">{totalTodayFormatted} hrs</span>
+                </div>
+                <div class="total-row">
+                    <span class="total-label">DRAFT TOTAL</span>
+                    <span class="total-value">{draftTotalFormatted} hrs</span>
+                </div>
+            </div>
+        </template>
+
+        <!-- ── Action buttons ──────────────────────────────────────────── -->
+        <div class="panel-actions">
+            <template if:true={hasDraftEntries}>
+                <button class="btn-save" onclick={handleSaveDraft}>Save Draft</button>
+                <button class="btn-submit" onclick={handleSubmit}>Submit All Time Entries</button>
+            </template>
+            <template if:false={hasDraftEntries}>
+                <button class="btn-submit btn-submit--disabled" disabled>Submit All Time Entries</button>
+            </template>
+        </div>
+
+    </div>
+</template>

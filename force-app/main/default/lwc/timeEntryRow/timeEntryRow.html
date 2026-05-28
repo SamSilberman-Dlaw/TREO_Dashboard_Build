@@ -1,0 +1,79 @@
+<template>
+
+    <!-- Compact / draft list view (collapsed mode) -->
+    <template if:false={isExpanded}>
+        <div class="compact-row">
+            <span class="compact-matter">{entry.matterName}</span>
+            <span class="compact-hours">{hoursFormatted}</span>
+            <span class="compact-narrative">{entry.narrative}</span>
+            <button class="icon-btn icon-btn--delete" title="Remove" data-local-id={entry._localId} onclick={handleDelete}>✕</button>
+        </div>
+    </template>
+
+    <!-- Full entry form (expanded workspace) -->
+    <template if:true={isExpanded}>
+        <div class="expanded-row">
+            <div class="row-header">
+                <span class="row-index">Entry {entryIndex}</span>
+                <div class="row-actions">
+                    <button class="icon-btn" title="Duplicate" onclick={handleDuplicate}>⎘</button>
+                    <button class="icon-btn icon-btn--delete" title="Remove" onclick={handleDelete}>✕</button>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-field form-field--matter">
+                    <label class="field-label">Matter</label>
+                    <div class="matter-wrap">
+                        <input
+                            type="text"
+                            class="field-input"
+                            value={entry.matterName}
+                            placeholder="Search matter..."
+                            onfocus={handleMatterFocus}
+                            oninput={handleMatterInput}
+                        />
+                        <template if:true={showDropdown}>
+                            <div class="matter-dropdown">
+                                <template for:each={matterResults} for:item="m">
+                                    <div key={m.id}
+                                         class="matter-option"
+                                         data-id={m.id}
+                                         data-name={m.name}
+                                         onmousedown={handleSelectMatter}>
+                                        <span class="opt-name">{m.name}</span>
+                                        <span class="opt-case">{m.caseNumber}</span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="form-field form-field--task">
+                    <label class="field-label">Task</label>
+                    <input type="text" class="field-input" value={entry.taskName}
+                           placeholder="Optional task..." data-field="taskName" onchange={handleFieldChange} />
+                </div>
+
+                <div class="form-field form-field--hours">
+                    <label class="field-label">Hours</label>
+                    <input type="number" class="field-input field-input--num"
+                           value={entry.hours} min="0" max="24" step="0.1"
+                           onchange={handleHoursChange} />
+                </div>
+
+                <div class="form-field form-field--billable">
+                    <label class="field-label">Billable</label>
+                    <input type="checkbox" class="field-checkbox" checked={entry.isBillable} onchange={handleBillableChange} />
+                </div>
+
+                <div class="form-field form-field--narrative">
+                    <label class="field-label">Narrative</label>
+                    <textarea class="field-textarea" rows="2"
+                              data-field="narrative" onchange={handleFieldChange}>{entry.narrative}</textarea>
+                </div>
+            </div>
+        </div>
+    </template>
+
+</template>

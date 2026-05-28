@@ -1,0 +1,226 @@
+<template>
+    <lightning-card title="Time Entry Dashboard">
+
+        <!-- Filters -->
+        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_small">
+
+            <!-- Date presets -->
+            <div class="filter-row">
+                <div class="preset-group">
+                    <button type="button" class={btnAll}  onclick={setView} data-view="all">All</button>
+                    <button type="button" class={btnMine} onclick={setView} data-view="mine">Mine</button>
+                </div>
+
+                <div class="preset-group">
+                    <button type="button" class={btn7d}   onclick={setPreset} data-preset="7">7 Days</button>
+                    <button type="button" class={btn15d}  onclick={setPreset} data-preset="15">15 Days</button>
+                    <button type="button" class={btn30d}  onclick={setPreset} data-preset="30">30 Days</button>
+                    <button type="button" class={btn90d}  onclick={setPreset} data-preset="90">90 Days</button>
+                    <button type="button" class={btnMtd}  onclick={setPreset} data-preset="mtd">MTD</button>
+                </div>
+
+                <div class="date-inputs">
+                    <lightning-input
+                        type="date"
+                        label="From"
+                        value={startDate}
+                        onchange={handleStartDate}>
+                    </lightning-input>
+                    <lightning-input
+                        type="date"
+                        label="To"
+                        value={endDate}
+                        onchange={handleEndDate}>
+                    </lightning-input>
+                </div>
+
+                <!-- Team + Staff filters (home page, All view only) -->
+                <template if:true={isHomeMode}>
+                    <template if:true={isAllView}>
+                        <div class="team-staff-group">
+                            <div class="staff-filter">
+                                <lightning-combobox
+                                    label="Team"
+                                    placeholder="All Teams"
+                                    value={selectedTeamId}
+                                    options={teamOptions}
+                                    onchange={handleTeamChange}>
+                                </lightning-combobox>
+                            </div>
+                            <div class="staff-filter multi-select-wrap">
+                                <label class="multi-select-label">Staff</label>
+                                <div class="multi-select-trigger-wrap">
+                                    <template if:true={staffDropdownOpen}>
+                                        <div class="dropdown-overlay" onclick={closeStaffDropdown}></div>
+                                    </template>
+                                    <button type="button" class="multi-select-trigger" onclick={toggleStaffDropdown}>
+                                        <span class="multi-select-trigger-text">{staffFilterLabel}</span>
+                                        <span class="multi-select-trigger-icon">▾</span>
+                                    </button>
+                                    <template if:true={staffDropdownOpen}>
+                                        <div class="multi-select-dropdown">
+                                            <template for:each={staffOptionsForDropdown} for:item="opt">
+                                                <label key={opt.value} class="multi-select-item">
+                                                    <input type="checkbox"
+                                                           value={opt.value}
+                                                           checked={opt.checked}
+                                                           onchange={handleStaffCheckbox}>
+                                                    <span>{opt.label}</span>
+                                                </label>
+                                            </template>
+                                            <template if:false={hasStaffOptions}>
+                                                <div class="multi-select-empty">No staff loaded yet</div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <template if:true={hasActiveFilter}>
+                            <button type="button" class="clear-btn" onclick={clearFilters}>&#x2715; Clear</button>
+                        </template>
+                    </template>
+                </template>
+            </div>
+            <div class="date-range-label">{dateRangeLabel}</div>
+
+        </div>
+
+        <!-- Summary cards -->
+        <div class="summary-row slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+            <div class="summary-card">
+                <div class="summary-value">{totalHoursDisplay}</div>
+                <div class="summary-label">Total Hours</div>
+                <template if:true={totalHoursDelta}>
+                    <div class={totalHoursDelta.cls}>{totalHoursDelta.label} {prevPeriodLabel}</div>
+                </template>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{entryCount}</div>
+                <div class="summary-label">Entries</div>
+                <template if:true={entryCountDelta}>
+                    <div class={entryCountDelta.cls}>{entryCountDelta.label} {prevPeriodLabel}</div>
+                </template>
+            </div>
+            <template if:true={isHomeMode}>
+                <div class="summary-card">
+                    <div class="summary-value">{matterCount}</div>
+                    <div class="summary-label">Matters</div>
+                </div>
+            </template>
+            <div class="summary-card">
+                <div class="summary-value">{staffDisplay}</div>
+                <div class="summary-label">Staff Members</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <template if:false={isLoading}>
+            <template if:true={hasData}>
+                <div class="charts-grid slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+
+                    <!-- Bar: hours by staff -->
+                    <div class="chart-card chart-card--wide">
+                        <div class="chart-card__title">Hours by Staff</div>
+                        <div class="chart-wrap">
+                            <canvas data-id="bar-chart"></canvas>
+                            <template if:false={barHasData}>
+                                <div class="chart-empty">No data</div>
+                            </template>
+                        </div>
+                        <template if:true={staffTruncated}>
+                            <div class="chart-truncated-note">Top 20 shown — narrow your date range to see all staff</div>
+                        </template>
+                    </div>
+
+                    <!-- Line: hours over time -->
+                    <div class="chart-card chart-card--wide">
+                        <div class="chart-card__title">Hours Over Time</div>
+                        <div class="chart-wrap">
+                            <canvas data-id="line-chart"></canvas>
+                            <template if:false={lineHasData}>
+                                <div class="chart-empty">No data</div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Home: donut left + hours-by-matter right -->
+                    <template if:true={isHomeMode}>
+                        <div class="chart-card">
+                            <div class="chart-card__title">{donutTitle}</div>
+                            <div class="chart-wrap chart-wrap--donut">
+                                <canvas data-id="donut-chart"></canvas>
+                                <template if:false={donutHasData}>
+                                    <div class="chart-empty">No data</div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-card__title">Hours by Matter</div>
+                            <div class="chart-wrap chart-wrap--hbar">
+                                <canvas data-id="hbar-chart"></canvas>
+                                <template if:false={hbarHasData}>
+                                    <div class="chart-empty">No data</div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Matter page: donut centered -->
+                    <template if:false={isHomeMode}>
+                        <div class="chart-card chart-card--narrow">
+                            <div class="chart-card__title">{donutTitle}</div>
+                            <div class="chart-wrap chart-wrap--donut">
+                                <canvas data-id="donut-chart"></canvas>
+                                <template if:false={donutHasData}>
+                                    <div class="chart-empty">No data</div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+
+                </div>
+
+                <!-- Entry list (matter page only) -->
+                <template if:false={isHomeMode}>
+                    <template if:true={hasEntries}>
+                        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+                            <div class="table-title-row">
+                                <div class="entry-table-title">Time Entries</div>
+                                <template if:true={hasChartFilter}>
+                                    <div class="chart-filter-badge">
+                                        Filtered by: {chartFilterLabel}
+                                        <button type="button" class="chart-filter-clear" onclick={clearChartFilter}>&#x2715;</button>
+                                    </div>
+                                </template>
+                            </div>
+                            <lightning-datatable
+                                key-field="id"
+                                data={tableEntries}
+                                columns={tableColumns}
+                                sorted-by={sortedBy}
+                                sorted-direction={sortedDirection}
+                                onsort={handleSort}
+                                hide-checkbox-column>
+                            </lightning-datatable>
+                        </div>
+                    </template>
+                </template>
+            </template>
+            <template if:false={hasData}>
+                <div class="slds-illustration slds-illustration_small slds-var-p-around_large">
+                    <p class="slds-text-body_regular slds-text-color_weak slds-text-align_center">
+                        No time entries found for the selected period.
+                    </p>
+                </div>
+            </template>
+        </template>
+
+        <template if:true={isLoading}>
+            <div class="slds-var-p-around_large slds-text-align_center">
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </div>
+        </template>
+
+    </lightning-card>
+</template>

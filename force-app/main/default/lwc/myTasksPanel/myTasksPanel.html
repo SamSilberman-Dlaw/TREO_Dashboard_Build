@@ -1,0 +1,45 @@
+<template>
+    <div class={containerClass}>
+        <div class="section-header">
+            <span class="section-title">MY TASKS</span>
+            <template if:false={isCompact}>
+                <span class="section-sub">— NEXT 30 DAYS</span>
+            </template>
+        </div>
+
+        <template if:true={hasTasks}>
+            <template for:each={formattedTasks} for:item="task">
+                <div key={task.id} class={task.rowClass}>
+                    <div class="task-check">
+                        <input
+                            type="checkbox"
+                            checked={task.isCompleted}
+                            data-id={task.id}
+                            onchange={handleCheckboxChange}
+                            class="task-checkbox"
+                        />
+                    </div>
+                    <div class="task-body">
+                        <div class="task-subject">{task.subject}</div>
+                        <div class="task-matter">Matter: {task.matterName}</div>
+                    </div>
+                    <div class="task-meta">
+                        <div class={task.dueLabelClass}>{task.dueDateLabel}</div>
+                        <template if:true={task.estimatedHoursFormatted}>
+                            <div class="task-est">Est. {task.estimatedHoursFormatted}h</div>
+                        </template>
+                        <template if:true={task.isCompleted}>
+                            <button class="add-time-link" data-id={task.id} onclick={handleAddTime}>
+                                Add Time →
+                            </button>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </template>
+
+        <template if:false={hasTasks}>
+            <div class="empty-state">No tasks due in the next 30 days</div>
+        </template>
+    </div>
+</template>

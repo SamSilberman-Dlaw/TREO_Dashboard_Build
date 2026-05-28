@@ -1,0 +1,181 @@
+<template>
+    <lightning-card title="Calendar Event Dashboard">
+
+        <!-- Filters -->
+        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_small">
+            <div class="filter-row">
+
+                <div class="preset-group">
+                    <button type="button" class={btnAll}  onclick={setView} data-view="all">All</button>
+                    <button type="button" class={btnMine} onclick={setView} data-view="mine">Mine</button>
+                </div>
+
+                <div class="preset-group">
+                    <button type="button" class={btn7d}  onclick={setPreset} data-preset="7">7 Days</button>
+                    <button type="button" class={btn14d} onclick={setPreset} data-preset="14">14 Days</button>
+                    <button type="button" class={btn30d} onclick={setPreset} data-preset="30">30 Days</button>
+                    <button type="button" class={btn3m}  onclick={setPreset} data-preset="3m">3 Mo</button>
+                    <button type="button" class={btn6m}  onclick={setPreset} data-preset="6m">6 Mo</button>
+                    <button type="button" class={btn9m}  onclick={setPreset} data-preset="9m">9 Mo</button>
+                    <button type="button" class={btn1y}  onclick={setPreset} data-preset="1y">1 Yr</button>
+                    <button type="button" class={btn2y}  onclick={setPreset} data-preset="2y">2 Yr</button>
+                </div>
+
+                <div class="date-inputs">
+                    <lightning-input type="date" label="From" value={startDate} onchange={handleStartDate}></lightning-input>
+                    <lightning-input type="date" label="To"   value={endDate}   onchange={handleEndDate}></lightning-input>
+                </div>
+
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <lightning-combobox
+                            label="Event Type"
+                            placeholder="All Types"
+                            value={selectedType}
+                            options={typeOptions}
+                            onchange={handleTypeChange}>
+                        </lightning-combobox>
+                    </div>
+                    <template if:true={hasUserOptions}>
+                        <div class="filter-item">
+                            <lightning-combobox
+                                label="User"
+                                placeholder="All Users"
+                                value={selectedUserId}
+                                options={userOptions}
+                                onchange={handleUserChange}>
+                            </lightning-combobox>
+                        </div>
+                    </template>
+                    <template if:true={hasActiveFilter}>
+                        <button type="button" class="clear-btn" onclick={clearFilters}>&#x2715; Clear</button>
+                    </template>
+                </div>
+
+            </div>
+            <div class="date-range-label">{dateRangeLabel}</div>
+        </div>
+
+        <!-- Summary cards -->
+        <div class="summary-row slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+            <div class="summary-card">
+                <div class="summary-value">{totalEventsDisplay}</div>
+                <div class="summary-label">Total Events</div>
+                <template if:true={totalEventsDelta}>
+                    <div class={totalEventsDelta.cls}>{totalEventsDelta.label} {prevPeriodLabel}</div>
+                </template>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{upcomingCount}</div>
+                <div class="summary-label">Upcoming</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{acceptanceRateDisplay}</div>
+                <div class="summary-label">Acceptance Rate</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{totalAttendeesDisplay}</div>
+                <div class="summary-label">Total Attendees</div>
+                <template if:true={totalAttendeesDelta}>
+                    <div class={totalAttendeesDelta.cls}>{totalAttendeesDelta.label} {prevPeriodLabel}</div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <template if:false={isLoading}>
+            <template if:true={hasData}>
+
+                <!-- Upcoming events table -->
+                <template if:true={hasEntries}>
+                    <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+                        <div class="table-title-row">
+                            <div class="entry-table-title">{upcomingTableTitle}</div>
+                            <template if:true={hasChartFilter}>
+                                <div class="chart-filter-badge">
+                                    Filtered by: {chartFilterLabel}
+                                    <button type="button" class="chart-filter-clear" onclick={clearChartFilter}>&#x2715;</button>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="table-scroll-wrap">
+                            <lightning-datatable
+                                key-field="id"
+                                data={tableEntries}
+                                columns={tableColumns}
+                                sorted-by={sortedBy}
+                                sorted-direction={sortedDirection}
+                                onsort={handleSort}
+                                hide-checkbox-column
+                                wrap-text-by-column-config>
+                            </lightning-datatable>
+                        </div>
+                    </div>
+                </template>
+
+                <div class="charts-grid slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+
+                    <!-- Bar: Events by Type -->
+                    <div class="chart-card">
+                        <div class="chart-card__title">Events by Type</div>
+                        <div class="chart-wrap">
+                            <canvas data-id="bar-chart"></canvas>
+                            <template if:false={barHasData}>
+                                <div class="chart-empty">No data</div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Line: Events Over Time -->
+                    <div class="chart-card">
+                        <div class="chart-card__title">Events Over Time</div>
+                        <div class="chart-wrap">
+                            <canvas data-id="line-chart"></canvas>
+                            <template if:false={lineHasData}>
+                                <div class="chart-empty">No data</div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Stacked Bar: RSVP Breakdown by Type -->
+                    <div class="chart-card">
+                        <div class="chart-card__title">RSVP Breakdown by Type</div>
+                        <div class="chart-wrap chart-wrap--rsvp">
+                            <canvas data-id="rsvp-chart"></canvas>
+                            <template if:false={rsvpHasData}>
+                                <div class="chart-empty">No data</div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Horizontal Bar: Top Matters -->
+                    <div class="chart-card">
+                        <div class="chart-card__title">Top Matters by Event Count</div>
+                        <div class="chart-wrap chart-wrap--hbar">
+                            <canvas data-id="matter-chart"></canvas>
+                            <template if:false={matterHasData}>
+                                <div class="chart-empty">No data</div>
+                            </template>
+                        </div>
+                    </div>
+
+                </div>
+
+            </template>
+            <template if:false={hasData}>
+                <div class="slds-illustration slds-illustration_small slds-var-p-around_large">
+                    <p class="slds-text-body_regular slds-text-color_weak slds-text-align_center">
+                        No calendar events found for the selected period.
+                    </p>
+                </div>
+            </template>
+        </template>
+
+        <template if:true={isLoading}>
+            <div class="slds-var-p-around_large slds-text-align_center">
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </div>
+        </template>
+
+    </lightning-card>
+</template>

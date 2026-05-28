@@ -1,0 +1,34 @@
+<template>
+    <div class={containerClass}>
+        <div class="section-header">
+            <span class="section-title">CRITICAL DEADLINES</span>
+            <template if:false={isCompact}>
+                <span class="section-sub">— NEXT 9 MONTHS</span>
+            </template>
+        </div>
+
+        <template if:true={hasDeadlines}>
+            <template for:each={formattedDeadlines} for:item="dl">
+                <div key={dl.id}
+                     class="deadline-row"
+                     data-id={dl.id}
+                     data-matter-id={dl.matterId}
+                     onclick={handleClick}>
+                    <span class={dl.dotClass}></span>
+                    <span class="dl-days">{dl.daysLabel}</span>
+                    <div class="dl-info">
+                        <div class="dl-type">{dl.deadlineType}</div>
+                        <div class="dl-matter">{dl.matterName}</div>
+                        <template if:false={isCompact}>
+                            <div class="dl-date">{dl.formattedDate}</div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </template>
+
+        <template if:false={hasDeadlines}>
+            <div class="empty-state">No critical deadlines in the next 9 months</div>
+        </template>
+    </div>
+</template>

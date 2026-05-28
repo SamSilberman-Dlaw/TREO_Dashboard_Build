@@ -1,0 +1,19 @@
+.section-header {
+    padding: 0.5rem 0 0.25rem;
+    border-bottom: 1px solid #dddbda;
+    margin-bottom: 0.25rem;
+}
+
+.section-header--brand   { border-left: 4px solid #0070d2; padding-left: 0.625rem; }
+.section-header--success { border-left: 4px solid #2e844a; padding-left: 0.625rem; }
+.section-header--warning { border-left: 4px solid #fe9339; padding-left: 0.625rem; }
+.section-header--error   { border-left: 4px solid #c23934; padding-left: 0.625rem; }
+
+.header-content {
+    display: flex;
+    align-items: center;
+}
+
+.header-icon {
+    flex-shrink: 0;
+}

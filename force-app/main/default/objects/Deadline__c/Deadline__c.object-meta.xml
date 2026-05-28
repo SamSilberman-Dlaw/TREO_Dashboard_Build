@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Deadline</label>
+    <pluralLabel>Deadlines</pluralLabel>
+    <nameField>
+        <label>Deadline Name</label>
+        <type>Text</type>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <enableHistory>false</enableHistory>
+    <enableActivities>false</enableActivities>
+</CustomObject>

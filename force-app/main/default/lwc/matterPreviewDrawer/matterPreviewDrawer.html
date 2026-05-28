@@ -1,0 +1,75 @@
+<template>
+    <div class="drawer-overlay" onclick={handleOverlayClick}></div>
+
+    <div class="drawer-panel" role="dialog" aria-modal="true" aria-label="Matter Detail">
+        <div class="drawer-header">
+            <span class="drawer-title">Matter Detail</span>
+            <button class="drawer-close" onclick={handleClose} title="Close">✕</button>
+        </div>
+
+        <template if:true={isLoading}>
+            <div class="drawer-loading">
+                <div class="loading-spinner"></div>
+            </div>
+        </template>
+
+        <template if:false={isLoading}>
+            <template if:true={matterDetail}>
+                <div class="drawer-body">
+
+                    <!-- Matter identity -->
+                    <div class="matter-name">{matterDetail.name}</div>
+                    <template if:true={matterDetail.caseNumber}>
+                        <div class="matter-case">Case #{matterDetail.caseNumber}</div>
+                    </template>
+
+                    <div class="detail-grid">
+                        <span class="detail-label">Status</span>
+                        <span class="detail-val status-badge">{matterDetail.status}</span>
+                        <span class="detail-label">Attorney</span>
+                        <span class="detail-val">{matterDetail.assignedAttorney}</span>
+                    </div>
+
+                    <!-- Deadline highlight -->
+                    <template if:true={hasDeadline}>
+                        <div class={deadlineHighlightClass}>
+                            <div class="dh-type">{deadline.deadlineType}</div>
+                            <div class="dh-date">{formattedDeadlineDate}</div>
+                            <div class="dh-days">{deadline.daysRemaining} days remaining</div>
+                        </div>
+                    </template>
+
+                    <!-- Open tasks -->
+                    <template if:true={hasOpenTasks}>
+                        <div class="subsection-label">OPEN TASKS</div>
+                        <template for:each={matterDetail.openTasks} for:item="task">
+                            <div key={task.id} class="drawer-task-row">
+                                <span class="dt-subject">{task.subject}</span>
+                                <span class="dt-due">{task.dueDate}</span>
+                            </div>
+                        </template>
+                    </template>
+
+                    <!-- Upcoming deadlines -->
+                    <template if:true={hasUpcomingDeadlines}>
+                        <div class="subsection-label">UPCOMING DEADLINES</div>
+                        <template for:each={matterDetail.upcomingDeadlines} for:item="dl">
+                            <div key={dl.id} class="drawer-dl-row">
+                                <span class="dd-type">{dl.type}</span>
+                                <span class="dd-date">{dl.date}</span>
+                            </div>
+                        </template>
+                    </template>
+
+                    <div class="drawer-footer">
+                        <button class="btn-open-matter" onclick={handleOpenMatter}>Open Matter →</button>
+                    </div>
+                </div>
+            </template>
+
+            <template if:false={matterDetail}>
+                <div class="drawer-error">Could not load matter details.</div>
+            </template>
+        </template>
+    </div>
+</template>
