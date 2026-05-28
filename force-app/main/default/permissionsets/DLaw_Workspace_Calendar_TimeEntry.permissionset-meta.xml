@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>D.Law Workspace - Calendar and Time Entry</label>
+    <description>Grants access to the Calendar and Time Entry tabs only. Assign to service staff who should not see the Operations Console.</description>
+    <classAccesses>
+        <apexClass>DlawShellController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>View_Calendar_Tab</name>
+    </customPermissions>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>View_Time_Entry_Tab</name>
+    </customPermissions>
+</PermissionSet>

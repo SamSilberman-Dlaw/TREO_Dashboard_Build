@@ -8,28 +8,33 @@ export default class DlawWorkspace extends LightningElement {
     @track config    = null;
 
     @wire(getShellConfig)
-    wiredConfig({ data }) {
-        if (!data) return;
-        this.config = data;
+    wiredConfig({ data, error }) {
+        if (data) {
+            this.config = data;
+        } else if (error) {
+            this.config = { userName: '', profile: '', tabs: { operations: false, timeEntry: false, calendar: false } };
+        } else {
+            return;
+        }
 
         const saved = this._getSavedTab();
-        if (saved && data.tabs[saved]) {
+        if (saved && this._tabVisible(saved)) {
             this.activeTab = saved;
-        } else if (data.tabs.operations) {
+        } else if (this.showOperations) {
             this.activeTab = 'operations';
-        } else if (data.tabs.calendar) {
-            this.activeTab = 'calendar';
-        } else {
+        } else if (this.showTimeEntry) {
             this.activeTab = 'timeEntry';
+        } else if (this.showCalendar) {
+            this.activeTab = 'calendar';
         }
     }
 
-    // ── Visibility flags ─────────────────────────────────────────────────
+    // ── Visibility flags (evaluated server-side via FeatureManagement) ────
 
     get isReady()        { return !!this.config; }
     get showOperations() { return !!this.config?.tabs?.operations; }
-    get showCalendar()   { return !!this.config?.tabs?.calendar; }
     get showTimeEntry()  { return !!this.config?.tabs?.timeEntry; }
+    get showCalendar()   { return !!this.config?.tabs?.calendar; }
 
     // ── Active state ─────────────────────────────────────────────────────
 
@@ -83,6 +88,13 @@ export default class DlawWorkspace extends LightningElement {
     }
 
     // ── Private helpers ───────────────────────────────────────────────────
+
+    _tabVisible(tab) {
+        if (tab === 'operations') return this.showOperations;
+        if (tab === 'calendar')   return this.showCalendar;
+        if (tab === 'timeEntry')  return this.showTimeEntry;
+        return false;
+    }
 
     _tabCls(tab) {
         return `tab-btn${this.activeTab === tab ? ' tab-btn--active' : ''}`;

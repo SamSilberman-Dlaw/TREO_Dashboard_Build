@@ -1,11 +1,5 @@
 public with sharing class DlawShellController {
 
-    // Profiles that should NOT see the attorney Operations Console tab
-    private static final Set<String> SERVICE_PROFILES = new Set<String>{
-        'TREO Service Agent',
-        'TREO Service Supervisor'
-    };
-
     @AuraEnabled(cacheable=true)
     public static Map<String, Object> getShellConfig() {
         try {
@@ -15,17 +9,16 @@ public with sharing class DlawShellController {
                 WHERE Id = :UserInfo.getUserId()
                 LIMIT 1
             ];
-            String  prof     = u.Profile.Name;
-            Boolean isStaff  = SERVICE_PROFILES.contains(prof);
-            Boolean isAdmin  = prof == 'System Administrator';
+            String  prof    = u.Profile.Name;
+            Boolean isAdmin = prof == 'System Administrator';
 
             return new Map<String, Object>{
-                'userName'  => String.isNotBlank(u.FirstName) ? u.FirstName : u.Name,
-                'profile'   => prof,
-                'tabs'      => new Map<String, Boolean>{
-                    'operations' => !isStaff || isAdmin,
-                    'calendar'   => true,
-                    'timeEntry'  => true
+                'userName' => String.isNotBlank(u.FirstName) ? u.FirstName : u.Name,
+                'profile'  => prof,
+                'tabs'     => new Map<String, Boolean>{
+                    'operations' => isAdmin || FeatureManagement.checkPermission('View_Operations_Tab'),
+                    'timeEntry'  => isAdmin || FeatureManagement.checkPermission('View_Time_Entry_Tab'),
+                    'calendar'   => isAdmin || FeatureManagement.checkPermission('View_Calendar_Tab')
                 }
             };
         } catch (Exception e) {

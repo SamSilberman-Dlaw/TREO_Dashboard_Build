@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>D.Law Workspace - All Tabs</label>
+    <description>Grants access to all three D.Law Workspace tabs: Operations Console, Calendar, and Time Entry. Assign to attorneys and admins.</description>
+    <classAccesses>
+        <apexClass>DlawShellController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>View_Operations_Tab</name>
+    </customPermissions>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>View_Calendar_Tab</name>
+    </customPermissions>
+    <customPermissions>
+        <enabled>true</enabled>
+        <name>View_Time_Entry_Tab</name>
+    </customPermissions>
+</PermissionSet>

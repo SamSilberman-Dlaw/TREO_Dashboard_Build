@@ -41,22 +41,6 @@
                 </button>
             </template>
 
-            <template if:true={showCalendar}>
-                <button class={calendarTabClass}
-                        role="tab"
-                        data-tab="calendar"
-                        aria-selected={isCalendarActive}
-                        onclick={handleTabClick}>
-                    <span class="tab-accent"></span>
-                    <span class="tab-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
-                        </svg>
-                    </span>
-                    <span class="tab-label">Calendar &amp; Events</span>
-                </button>
-            </template>
-
             <template if:true={showTimeEntry}>
                 <button class={timeEntryTabClass}
                         role="tab"
@@ -70,6 +54,22 @@
                         </svg>
                     </span>
                     <span class="tab-label">Time Entry</span>
+                </button>
+            </template>
+
+            <template if:true={showCalendar}>
+                <button class={calendarTabClass}
+                        role="tab"
+                        data-tab="calendar"
+                        aria-selected={isCalendarActive}
+                        onclick={handleTabClick}>
+                    <span class="tab-accent"></span>
+                    <span class="tab-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                        </svg>
+                    </span>
+                    <span class="tab-label">Calendar &amp; Events</span>
                 </button>
             </template>
 
@@ -104,15 +104,15 @@
                     </div>
                 </template>
 
-                <template if:true={showCalendar}>
-                    <div class={calendarPanelClass} role="tabpanel" aria-label="Calendar and Events">
-                        <c-calendar-event-dashboard></c-calendar-event-dashboard>
-                    </div>
-                </template>
-
                 <template if:true={showTimeEntry}>
                     <div class={timeEntryPanelClass} role="tabpanel" aria-label="Time Entry">
                         <c-time-entry-dashboard></c-time-entry-dashboard>
+                    </div>
+                </template>
+
+                <template if:true={showCalendar}>
+                    <div class={calendarPanelClass} role="tabpanel" aria-label="Calendar and Events">
+                        <c-calendar-event-dashboard></c-calendar-event-dashboard>
                     </div>
                 </template>
 
