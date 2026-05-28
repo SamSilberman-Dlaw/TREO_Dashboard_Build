@@ -1,0 +1,240 @@
+/* ── Shell ─────────────────────────────────────────────────────────── */
+:host { display: block; }
+
+.dlaw-workspace {
+    background: #f4f6f9;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,.09);
+    min-height: 200px;
+}
+
+/* ── Brand header ──────────────────────────────────────────────────── */
+.workspace-header {
+    background: linear-gradient(135deg, #1a1f36 0%, #0f172a 100%);
+    padding: 11px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 48px;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+}
+
+.brand-glyph {
+    font-size: 18px;
+    line-height: 1;
+    filter: brightness(1.15);
+}
+
+.brand-text {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.brand-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #f1f5f9;
+    letter-spacing: .12em;
+}
+
+.brand-divider {
+    color: rgba(255,255,255,.25);
+    font-size: 13px;
+}
+
+.brand-product {
+    font-size: 11px;
+    color: #94a3b8;
+    letter-spacing: .08em;
+    font-weight: 400;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.header-user {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #e2e8f0;
+    font-weight: 500;
+}
+
+.header-user-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    flex-shrink: 0;
+    box-shadow: 0 0 5px rgba(34,197,94,.6);
+}
+
+.header-date {
+    font-size: 11px;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+/* ── Tab navigation ────────────────────────────────────────────────── */
+.tab-nav {
+    background: #fff;
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 12px;
+    gap: 0;
+    min-height: 46px;
+}
+
+.tab-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 18px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    letter-spacing: .025em;
+    white-space: nowrap;
+    margin-bottom: -1px;
+    transition: color .14s ease, border-color .14s ease;
+    outline: none;
+}
+
+.tab-btn:focus-visible {
+    outline: 2px solid #0176d3;
+    outline-offset: -2px;
+    border-radius: 3px;
+}
+
+.tab-btn:hover:not(.tab-btn--active) {
+    color: #374151;
+    background: #f9fafb;
+}
+
+.tab-btn--active {
+    color: #0176d3;
+    border-bottom-color: #0176d3;
+}
+
+/* Animated top accent bar on active tab */
+.tab-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: transparent;
+    border-radius: 0 0 2px 2px;
+    transition: background .14s ease;
+}
+.tab-btn--active .tab-accent { background: #0176d3; }
+
+.tab-icon {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.tab-icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.tab-label { line-height: 1; }
+
+.tab-fill { flex: 1; }
+
+/* Profile badge */
+.profile-badge {
+    display: flex;
+    align-items: center;
+    align-self: center;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 3px 9px;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+    cursor: default;
+    user-select: none;
+    margin-right: 4px;
+}
+
+/* ── Loading state ─────────────────────────────────────────────────── */
+.workspace-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 60px 20px;
+}
+
+.loading-bar {
+    width: 200px;
+    height: 3px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.loading-bar-fill {
+    height: 100%;
+    width: 40%;
+    background: #0176d3;
+    border-radius: 3px;
+    animation: loading-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes loading-slide {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(350%); }
+}
+
+.loading-label {
+    font-size: 12px;
+    color: #9ca3af;
+    letter-spacing: .04em;
+}
+
+/* ── Workspace body ────────────────────────────────────────────────── */
+.workspace-body {
+    padding: 0;
+}
+
+/* ── Tab panels (all mounted; visibility via CSS, not if:true) ─────── */
+.tab-panel {
+    display: none;
+}
+
+.tab-panel--active {
+    display: block;
+    animation: panel-in .2s ease;
+}
+
+@keyframes panel-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
