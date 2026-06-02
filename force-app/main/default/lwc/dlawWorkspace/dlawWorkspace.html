@@ -25,14 +25,17 @@
                             role="tab"
                             data-tab="operations"
                             aria-selected={isOperationsActive}
-                            title="Operations Console"
+                            title="Docket"
                             onclick={handleTabClick}>
                         <span class="tab-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
                             </svg>
                         </span>
-                        <span class="tab-label">Operations</span>
+                        <span class="tab-label">Docket</span>
+                        <template if:true={showOverdueBadge}>
+                            <span class="tab-badge tab-badge--danger">{overdueCountLabel}</span>
+                        </template>
                     </button>
                 </template>
 
@@ -41,14 +44,17 @@
                             role="tab"
                             data-tab="timeEntry"
                             aria-selected={isTimeEntryActive}
-                            title="Time Entry"
+                            title="Firm Time Entries"
                             onclick={handleTabClick}>
                         <span class="tab-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>
                             </svg>
                         </span>
-                        <span class="tab-label">Time Entry</span>
+                        <span class="tab-label">Firm Time Entries</span>
+                        <template if:true={showTodayBadge}>
+                            <span class={todayBadgeClass}>{todayBadgeLabel}</span>
+                        </template>
                     </button>
                 </template>
 
@@ -57,14 +63,14 @@
                             role="tab"
                             data-tab="calendar"
                             aria-selected={isCalendarActive}
-                            title="Calendar &amp; Events"
+                            title="Firm Calendar"
                             onclick={handleTabClick}>
                         <span class="tab-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M19 3h-1V1h-2v2H8V1H6v2H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
                             </svg>
                         </span>
-                        <span class="tab-label">Calendar</span>
+                        <span class="tab-label">Firm Calendar</span>
                     </button>
                 </template>
 
@@ -74,7 +80,7 @@
 
             <template if:true={isReady}>
                 <div class="bar-user" title={profileName}>
-                    <span class="bar-user-dot"></span>
+                    <span class="bar-aurora"></span>
                     <span class="bar-user-name">{firstName}</span>
                     <span class="bar-user-role">{profileBadgeLabel}</span>
                 </div>
@@ -88,7 +94,7 @@
 
                 <template if:true={showOperations}>
                     <div class={operationsPanelClass} role="tabpanel" aria-label="Operations Console">
-                        <c-dlaw-operations-console></c-dlaw-operations-console>
+                        <c-dlaw-operations-console ondailystats={handleDailyStats}></c-dlaw-operations-console>
                     </div>
                 </template>
 

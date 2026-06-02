@@ -1,5 +1,5 @@
 <template>
-    <lightning-card title="D.Law Operations Console">
+    <lightning-card title="My Docket">
 
         <div slot="actions" class="header-actions">
             <template if:true={lastRefreshLabel}>
@@ -601,6 +601,11 @@
                                                     {entry.collapseIcon}
                                                 </button>
                                                 <span class="te-card-title">{entry.cardTitle}</span>
+                                                <button type="button" class="te-duplicate-btn"
+                                                        data-id={entry._id} onclick={duplicateEntry}
+                                                        title="Add another entry for this case">
+                                                    +
+                                                </button>
                                                 <button type="button" class="te-remove-btn"
                                                         data-id={entry._id} onclick={removeDraftEntry}>
                                                     Remove
@@ -643,6 +648,9 @@
                                                            oninput={handleEntryField}>
                                                     <div class="te-hours-chips">
                                                         <button type="button" class="te-hours-chip"
+                                                                data-id={entry._id} data-hours="0.1"
+                                                                onclick={handleQuickHours}>0.1</button>
+                                                        <button type="button" class="te-hours-chip"
                                                                 data-id={entry._id} data-hours="0.5"
                                                                 onclick={handleQuickHours}>0.5</button>
                                                         <button type="button" class="te-hours-chip"
@@ -652,11 +660,14 @@
                                                                 data-id={entry._id} data-hours="2"
                                                                 onclick={handleQuickHours}>2</button>
                                                         <button type="button" class="te-hours-chip"
+                                                                data-id={entry._id} data-hours="3"
+                                                                onclick={handleQuickHours}>3</button>
+                                                        <button type="button" class="te-hours-chip"
                                                                 data-id={entry._id} data-hours="4"
                                                                 onclick={handleQuickHours}>4</button>
                                                         <button type="button" class="te-hours-chip"
-                                                                data-id={entry._id} data-hours="8"
-                                                                onclick={handleQuickHours}>8</button>
+                                                                data-id={entry._id} data-hours="5"
+                                                                onclick={handleQuickHours}>5</button>
                                                     </div>
                                                 </div>
 

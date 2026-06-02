@@ -9,22 +9,36 @@ import getEligibleStaff  from '@salesforce/apex/OperationsConsoleController.getE
 import submitTimeEntries from '@salesforce/apex/OperationsConsoleController.submitTimeEntries';
 
 const DOT_CLASSES = {
-    'SOL':                  'deadline-dot deadline-dot--red',
-    'Trial':                'deadline-dot deadline-dot--purple',
-    'Class Cert - Hearing': 'deadline-dot deadline-dot--orange',
-    'Discovery Cutoff':     'deadline-dot deadline-dot--blue',
-    'Opposition to MSJ':    'deadline-dot deadline-dot--indigo',
-    'PMK depo':             'deadline-dot deadline-dot--green',
-    'client deposition':    'deadline-dot deadline-dot--teal'
+    'SOL':                                 'deadline-dot deadline-dot--red',
+    'Trial':                               'deadline-dot deadline-dot--purple',
+    'Class Cert - Hearing':                'deadline-dot deadline-dot--orange',
+    'Discovery Cutoff':                    'deadline-dot deadline-dot--blue',
+    'Opposition to MSJ':                   'deadline-dot deadline-dot--indigo',
+    'PMK Depo':                            'deadline-dot deadline-dot--green',
+    'Client Deposition':                   'deadline-dot deadline-dot--teal',
+    'Hearing':                             'deadline-dot deadline-dot--yellow',
+    'Deadline':                            'deadline-dot deadline-dot--indigo',
+    'Motion Deadline':                     'deadline-dot deadline-dot--pink',
+    'Motion for Summary Judgment Hearing': 'deadline-dot deadline-dot--lime',
+    'Discovery Deadline':                  'deadline-dot deadline-dot--cyan',
+    'Federal - Hearing':                   'deadline-dot deadline-dot--slate',
+    'Federal - Trial':                     'deadline-dot deadline-dot--rose'
 };
 const TYPE_BADGE_CLASSES = {
-    'SOL':                  'type-badge type-badge--red',
-    'Trial':                'type-badge type-badge--purple',
-    'Class Cert - Hearing': 'type-badge type-badge--orange',
-    'Discovery Cutoff':     'type-badge type-badge--blue',
-    'Opposition to MSJ':    'type-badge type-badge--indigo',
-    'PMK depo':             'type-badge type-badge--green',
-    'client deposition':    'type-badge type-badge--teal'
+    'SOL':                                 'type-badge type-badge--red',
+    'Trial':                               'type-badge type-badge--purple',
+    'Class Cert - Hearing':                'type-badge type-badge--orange',
+    'Discovery Cutoff':                    'type-badge type-badge--blue',
+    'Opposition to MSJ':                   'type-badge type-badge--indigo',
+    'PMK Depo':                            'type-badge type-badge--green',
+    'Client Deposition':                   'type-badge type-badge--teal',
+    'Hearing':                             'type-badge type-badge--yellow',
+    'Deadline':                            'type-badge type-badge--indigo',
+    'Motion Deadline':                     'type-badge type-badge--pink',
+    'Motion for Summary Judgment Hearing': 'type-badge type-badge--lime',
+    'Discovery Deadline':                  'type-badge type-badge--cyan',
+    'Federal - Hearing':                   'type-badge type-badge--slate',
+    'Federal - Trial':                     'type-badge type-badge--rose'
 };
 const DAY_NAMES  = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const REFRESH_MS = 5 * 60 * 1000;
@@ -80,7 +94,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     _focusInsideComponent   = false;
     _taskFilter             = 'week';
     _deadlinesFilter        = '270';
-    _assocFilter            = '90';
+    _assocFilter            = 'month';
     _assocFilterType        = '';
     _filterType             = '';
     _handleFocusIn          = null;
@@ -185,6 +199,18 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
             .catch(() => {});
     }
 
+    _fireDailyStats() {
+        this.dispatchEvent(new CustomEvent('dailystats', {
+            bubbles:  true,
+            composed: true,
+            detail: {
+                todayHours:   this.todayHours,
+                draftCount:   this.draftEntries.length,
+                overdueCount: this.overdueTaskCount
+            }
+        }));
+    }
+
     handleRefresh() {
         this.isRefreshing = true;
         getConsoleData()
@@ -210,6 +236,8 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
 
         this._rawTasks = data.myTasks || [];
         this.myTasks   = this._processTasks(this._filterTasks(this._rawTasks));
+
+        this._fireDailyStats();
     }
 
     /* ── Data processors ── */
@@ -254,8 +282,8 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return rows.map(ev => {
-            const dotClass       = DOT_CLASSES[ev.eventType]        || 'deadline-dot deadline-dot--blue';
-            const typeBadgeClass = TYPE_BADGE_CLASSES[ev.eventType] || 'type-badge type-badge--blue';
+            const dotClass       = 'deadline-dot deadline-dot--blue';
+            const typeBadgeClass = 'type-badge type-badge--blue';
             const isAllDay  = ev.isAllDay || (ev.startDate && ev.startDate.endsWith('T00:00:00Z'));
             const timeLabel = (!isAllDay && ev.startDate) ? this._fmtTime(ev.startDate) : '';
             const endLabel  = (!isAllDay && ev.endDate)   ? this._fmtTime(ev.endDate)   : '';
@@ -342,7 +370,8 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
             cutoff = new Date(today);
             cutoff.setDate(today.getDate() + (6 - today.getDay()));
         } else if (this._taskFilter === 'month') {
-            cutoff = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            cutoff = new Date(today);
+            cutoff.setDate(today.getDate() + 30);
         } else {
             cutoff = new Date(today);
             cutoff.setDate(today.getDate() + parseInt(this._taskFilter, 10));
@@ -580,13 +609,19 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
 
     get typeFilters() {
         return [
-            { key: 'SOL',                  label: 'SOL'                  },
-            { key: 'Trial',                label: 'Trial'                },
-            { key: 'Class Cert - Hearing', label: 'Class Cert - Hearing' },
-            { key: 'Discovery Cutoff',     label: 'Discovery Cutoff'     },
-            { key: 'Opposition to MSJ',    label: 'Opposition to MSJ'    },
-            { key: 'PMK depo',             label: 'PMK Depo'             },
-            { key: 'client deposition',    label: 'Client Deposition'    }
+            { key: 'SOL',                                 label: 'SOL'                                 },
+            { key: 'Trial',                               label: 'Trial'                               },
+            { key: 'Class Cert - Hearing',                label: 'Class Cert - Hearing'                },
+            { key: 'Discovery Cutoff',                    label: 'Discovery Cutoff'                    },
+            { key: 'Opposition to MSJ',                   label: 'Opposition to MSJ'                   },
+            { key: 'PMK Depo',                            label: 'PMK Depo'                            },
+            { key: 'Client Deposition',                   label: 'Client Deposition'                   },
+            { key: 'Hearing',                             label: 'Hearing'                             },
+            { key: 'Motion Deadline',                     label: 'Motion Deadline'                     },
+            { key: 'Motion for Summary Judgment Hearing', label: 'Motion for Summary Judgment Hearing' },
+            { key: 'Discovery Deadline',                  label: 'Discovery Deadline'                  },
+            { key: 'Federal - Hearing',                   label: 'Federal - Hearing'                   },
+            { key: 'Federal - Trial',                     label: 'Federal - Trial'                     }
         ].sort((a, b) => a.label.localeCompare(b.label));
     }
 
@@ -1032,6 +1067,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
         });
         if (newEntries.length) {
             this.draftEntries = [...this.draftEntries, ...newEntries];
+            this._fireDailyStats();
         }
         this._syncPickerAddedState();
         this._panelView = 'fill';
@@ -1089,8 +1125,34 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     removeDraftEntry(e) {
         const id = e.currentTarget.dataset.id;
         this.draftEntries = this.draftEntries.filter(d => d._id !== id);
+        this._fireDailyStats();
         this._syncPickerAddedState();
         if (this.draftEntries.length === 0) this._panelView = 'pick';
+    }
+
+    duplicateEntry(e) {
+        const id     = e.currentTarget.dataset.id;
+        const source = this.draftEntries.find(d => d._id === id);
+        if (!source) return;
+        this._entryCounter++;
+        const clone = {
+            ...source,
+            _id:              String(this._entryCounter),
+            hours:            '',
+            taskNote:         '',
+            hoursClass:       this._hoursClass(''),
+            taskNoteClass:    this._taskNoteClass(''),
+            collapsed:        false,
+            collapseIcon:     '▲',
+            collapsedSummary: '',
+            noteLength:       0,
+            noteCounterClass: 'te-note-counter'
+        };
+        const idx = this.draftEntries.findIndex(d => d._id === id);
+        const updated = [...this.draftEntries];
+        updated.splice(idx + 1, 0, clone);
+        this.draftEntries = updated;
+        this._fireDailyStats();
     }
 
     toggleCardCollapse(e) {
@@ -1157,6 +1219,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
                 this._panelView     = 'success';
                 this.draftEntries   = [];
                 this.showValidation = false;
+                this._fireDailyStats();
                 this._syncPickerAddedState();
                 this._silentRefresh();
             })

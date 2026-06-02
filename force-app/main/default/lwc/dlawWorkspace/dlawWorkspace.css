@@ -30,7 +30,10 @@
 
 /* ── Single workspace bar ──────────────────────────────────────────── */
 .workspace-bar {
-    background: linear-gradient(135deg, #1a1f36 0%, #0f172a 100%);
+    background: linear-gradient(135deg, rgba(26,31,54,0.97) 0%, rgba(15,23,42,0.98) 100%);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
     display: flex;
     align-items: stretch;
     height: 44px;
@@ -75,6 +78,7 @@
 
 .tab-btn {
     position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -91,6 +95,27 @@
     white-space: nowrap;
     transition: color .14s ease, border-color .14s ease;
     outline: none;
+}
+
+/* Diagonal shimmer sweep on hover */
+.tab-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 35%,
+        rgba(255,255,255,0.07) 50%,
+        transparent 65%
+    );
+    transform: translateX(-120%);
+    transition: none;
+    pointer-events: none;
+}
+
+.tab-btn:hover::before {
+    transform: translateX(120%);
+    transition: transform 0.45s ease;
 }
 
 .tab-btn:focus-visible {
@@ -135,6 +160,48 @@
     flex-shrink: 0;
 }
 
+/* Holographic foil pill */
+.bar-aurora {
+    width: 34px;
+    height: 15px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(
+        105deg,
+        #f43f5e, #fb923c, #facc15, #4ade80,
+        #22d3ee, #818cf8, #e879f9, #f43f5e
+    );
+    background-size: 200% 100%;
+    animation: holo-drift 3s linear infinite;
+    box-shadow: 0 0 8px rgba(248,113,113,.3), 0 0 16px rgba(129,140,248,.2);
+}
+
+.bar-aurora::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        105deg,
+        transparent 30%,
+        rgba(255,255,255,0.28) 50%,
+        transparent 70%
+    );
+    animation: holo-sheen 1.8s ease-in-out infinite;
+}
+
+@keyframes holo-drift {
+    from { background-position: 0% 50%; }
+    to   { background-position: 200% 50%; }
+}
+
+@keyframes holo-sheen {
+    0%   { transform: translateX(-120%); }
+    60%  { transform: translateX(120%); }
+    100% { transform: translateX(120%); }
+}
+
 .bar-user-dot {
     width: 6px;
     height: 6px;
@@ -160,6 +227,22 @@
     border-radius: 10px;
     letter-spacing: .06em;
 }
+
+/* ── Tab badges ────────────────────────────────────────────────────── */
+.tab-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 8px;
+    line-height: 1.5;
+    letter-spacing: .02em;
+    flex-shrink: 0;
+}
+
+.tab-badge--ok     { background: rgba(34,197,94,.18);  color: #86efac; }
+.tab-badge--warn   { background: rgba(245,158,11,.22); color: #fcd34d; }
+.tab-badge--draft  { background: rgba(59,130,246,.22); color: #93c5fd; }
+.tab-badge--danger { background: rgba(239,68,68,.22);  color: #fca5a5; }
 
 /* ── Workspace body ────────────────────────────────────────────────── */
 .workspace-body { padding: 0; }

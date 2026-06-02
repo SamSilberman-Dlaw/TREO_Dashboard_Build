@@ -1,0 +1,166 @@
+<template>
+    <lightning-card title="Submit Time">
+    <div class="mte-panel">
+
+        <!-- ── Fill View ── -->
+        <template if:true={isFillView}>
+            <div class="te-view">
+
+                <template if:true={hasMultipleEntries}>
+                <div class="te-batch-bar">
+                    <div class="te-batch-left">
+                        <label class="te-batch-label">Set All Dates:</label>
+                        <input type="date" class="te-batch-date"
+                               onchange={handleBatchDateChange}>
+                    </div>
+                    <div class="te-batch-right">
+                        <span class="te-draft-count">{draftCountLabel}</span>
+                        <button type="button" class="te-collapse-all-btn"
+                                onclick={toggleAllCollapse}>
+                            {allCollapseLabel}
+                        </button>
+                    </div>
+                </div>
+                </template>
+
+                <div class="te-entry-list">
+                    <template for:each={draftEntries} for:item="entry">
+                        <div key={entry._id} class="te-entry-card">
+
+                            <div class="te-card-header">
+                                <button type="button" class="te-collapse-btn"
+                                        data-id={entry._id} onclick={toggleCardCollapse}
+                                        title="Expand / collapse">
+                                    {entry.collapseIcon}
+                                </button>
+                                <span class="te-card-title">{entry.cardTitle}</span>
+                                <button type="button" class="te-duplicate-btn"
+                                        data-id={entry._id} onclick={duplicateEntry}
+                                        title="Add another entry for this case">
+                                    +
+                                </button>
+                                <template if:true={hasMultipleEntries}>
+                                <button type="button" class="te-remove-btn"
+                                        data-id={entry._id} onclick={removeDraftEntry}>
+                                    Remove
+                                </button>
+                                </template>
+                            </div>
+
+                            <template if:true={entry.collapsed}>
+                                <template if:true={entry.collapsedSummary}>
+                                    <div class="te-card-collapsed-summary">{entry.collapsedSummary}</div>
+                                </template>
+                            </template>
+
+                            <template if:false={entry.collapsed}>
+
+                                <div class="te-field">
+                                    <label class="te-label">* Staff</label>
+                                    <lightning-combobox
+                                        value={entry.staffId}
+                                        options={staffComboOptions}
+                                        variant="label-hidden"
+                                        data-id={entry._id}
+                                        onchange={handleStaffChange}>
+                                    </lightning-combobox>
+                                </div>
+
+                                <div class="te-field">
+                                    <label class="te-label">* Entry Date</label>
+                                    <input type="date" class="te-input"
+                                           value={entry.entryDate}
+                                           data-id={entry._id} data-field="entryDate"
+                                           onchange={handleEntryField}>
+                                </div>
+
+                                <div class="te-field">
+                                    <label class="te-label">* Submit Hours</label>
+                                    <input type="number" class={entry.hoursClass}
+                                           min="0" max="24" step="0.25" placeholder="0.0"
+                                           value={entry.hours}
+                                           data-id={entry._id} data-field="hours"
+                                           oninput={handleEntryField}>
+                                    <div class="te-hours-chips">
+                                        <button type="button" class="te-hours-chip"
+                                                data-id={entry._id} data-hours="0.1"
+                                                onclick={handleQuickHours}>0.1</button>
+                                        <button type="button" class="te-hours-chip"
+                                                data-id={entry._id} data-hours="0.5"
+                                                onclick={handleQuickHours}>0.5</button>
+                                        <button type="button" class="te-hours-chip"
+                                                data-id={entry._id} data-hours="1"
+                                                onclick={handleQuickHours}>1</button>
+                                        <button type="button" class="te-hours-chip"
+                                                data-id={entry._id} data-hours="2"
+                                                onclick={handleQuickHours}>2</button>
+                                        <button type="button" class="te-hours-chip"
+                                                data-id={entry._id} data-hours="3"
+                                                onclick={handleQuickHours}>3</button>
+                                        <button type="button" class="te-hours-chip"
+                                                data-id={entry._id} data-hours="4"
+                                                onclick={handleQuickHours}>4</button>
+                                        <button type="button" class="te-hours-chip"
+                                                data-id={entry._id} data-hours="5"
+                                                onclick={handleQuickHours}>5</button>
+                                    </div>
+                                </div>
+
+                                <div class="te-field">
+                                    <label class="te-label">* Task Note</label>
+                                    <textarea class={entry.taskNoteClass}
+                                              placeholder="Describe work performed..."
+                                              data-id={entry._id} data-field="taskNote"
+                                              oninput={handleEntryField}></textarea>
+                                    <div class={entry.noteCounterClass}>{entry.noteLength} / 32,768</div>
+                                </div>
+
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="te-submit-wrap">
+                    <div class={readyEntriesLabelClass}>{readyEntriesLabel}</div>
+                    <div class="te-total-row">
+                        <span>Draft Total</span>
+                        <span class="te-total-val">{draftTotalDisplay}</span>
+                    </div>
+                    <button type="button" class="te-submit-btn"
+                            disabled={submitDisabled}
+                            onclick={submitAllEntries}>
+                        {submitLabel}
+                    </button>
+                </div>
+
+            </div>
+        </template>
+
+        <!-- ── Success View ── -->
+        <template if:true={isSuccessView}>
+            <div class="te-success">
+                <div class="te-success-icon">✓</div>
+                <div class="te-success-title">Time Entries Submitted!</div>
+                <div class="te-success-count">{successCountLabel}</div>
+
+                <div class="te-success-list">
+                    <template for:each={submittedEntries} for:item="e">
+                        <div key={e._id} class="te-success-entry">
+                            <button type="button" class="te-success-matter-link"
+                                    data-id={e.matterId}
+                                    onclick={handleOpenMatterById}>{e.cardTitle}</button>
+                            <div class="te-success-meta">{e.staffName} · {e.dateLabel} · {e.hours}h</div>
+                            <div class="te-success-note">{e.taskNote}</div>
+                        </div>
+                    </template>
+                </div>
+
+                <button type="button" class="te-success-btn" onclick={handleSubmitMore}>
+                    Submit More Time
+                </button>
+            </div>
+        </template>
+
+    </div>
+    </lightning-card>
+</template>

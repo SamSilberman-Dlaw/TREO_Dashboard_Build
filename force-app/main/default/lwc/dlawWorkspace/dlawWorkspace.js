@@ -1,11 +1,23 @@
 import { LightningElement, wire, track } from 'lwc';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getShellConfig from '@salesforce/apex/DlawShellController.getShellConfig';
 
 const LS_KEY = 'dlaw_workspace_tab';
 
+const TAB_TITLES = {
+    operations: 'D.Law — Docket',
+    timeEntry:  'D.Law — Firm Time Entries',
+    calendar:   'D.Law — Firm Calendar'
+};
+
 export default class DlawWorkspace extends LightningElement {
-    @track activeTab = null;
-    @track config    = null;
+    @track activeTab    = null;
+    @track config       = null;
+    @track todayHours   = null;  // null until ops console reports in
+    @track draftCount   = 0;
+    @track overdueCount = 0;
+
+    _keydownHandler = null;
 
     @wire(getShellConfig)
     wiredConfig({ data, error }) {
@@ -27,61 +39,130 @@ export default class DlawWorkspace extends LightningElement {
         } else if (this.showCalendar) {
             this.activeTab = 'calendar';
         }
+
+        this._updateTitle();
     }
 
-    // ── Visibility flags (evaluated server-side via FeatureManagement) ────
+    connectedCallback() {
+        this._keydownHandler = this._handleKeydown.bind(this);
+        window.addEventListener('keydown', this._keydownHandler);
+    }
+
+    disconnectedCallback() {
+        if (this._keydownHandler) {
+            window.removeEventListener('keydown', this._keydownHandler);
+        }
+    }
+
+    // ── Visibility flags ──────────────────────────────────────────────────
 
     get isReady()        { return !!this.config; }
     get showOperations() { return !!this.config?.tabs?.operations; }
     get showTimeEntry()  { return !!this.config?.tabs?.timeEntry; }
     get showCalendar()   { return !!this.config?.tabs?.calendar; }
 
-    // ── Active state ─────────────────────────────────────────────────────
+    // ── Active state ──────────────────────────────────────────────────────
 
     get isOperationsActive() { return this.activeTab === 'operations'; }
     get isCalendarActive()   { return this.activeTab === 'calendar'; }
     get isTimeEntryActive()  { return this.activeTab === 'timeEntry'; }
 
-    // ── Tab button classes ────────────────────────────────────────────────
+    // ── Tab button classes ─────────────────────────────────────────────────
 
     get operationsTabClass() { return this._tabCls('operations'); }
     get calendarTabClass()   { return this._tabCls('calendar'); }
     get timeEntryTabClass()  { return this._tabCls('timeEntry'); }
 
-    // ── Panel classes (CSS visibility — components stay mounted) ──────────
+    // ── Panel classes ──────────────────────────────────────────────────────
 
     get operationsPanelClass() { return this._panelCls('operations'); }
     get calendarPanelClass()   { return this._panelCls('calendar'); }
     get timeEntryPanelClass()  { return this._panelCls('timeEntry'); }
 
-    // ── Header display ────────────────────────────────────────────────────
+    // ── Header display ─────────────────────────────────────────────────────
 
-    get firstName() {
-        return this.config?.userName || '';
+    get firstName()         { return this.config?.userName || ''; }
+    get profileName()       { return this.config?.profile || ''; }
+    get profileBadgeLabel() { return this.config?.role || this.config?.profile || ''; }
+
+    // ── Time Entry tab badge (today hours + draft indicator) ───────────────
+
+    get showTodayBadge() {
+        return this.showTimeEntry && this.draftCount > 0;
     }
 
-    get profileName() {
-        return this.config?.profile || '';
+    get todayBadgeLabel() {
+        return `${this.draftCount} draft`;
     }
 
-    get profileBadgeLabel() {
-        const p = this.config?.profile || '';
-        if (p === 'System Administrator') return 'Admin';
-        if (p.includes('Attorney'))       return 'Attorney';
-        if (p.includes('TREO'))           return p.replace('TREO ', '');
-        return p.split(' ').map(w => w[0]).join('').slice(0, 6);
+    get todayBadgeClass() {
+        return 'tab-badge tab-badge--draft';
     }
 
-    // ── Handlers ─────────────────────────────────────────────────────────
+    // ── Operations tab badge (overdue tasks) ───────────────────────────────
+
+    get showOverdueBadge() {
+        return this.showOperations && this.overdueCount > 0;
+    }
+
+    get overdueCountLabel() { return String(this.overdueCount); }
+
+    // ── Handlers ──────────────────────────────────────────────────────────
 
     handleTabClick(event) {
         const tab = event.currentTarget.dataset.tab;
         if (tab === this.activeTab) return;
+        if (!this._trySwitch()) return;
         this.activeTab = tab;
         this._saveTab(tab);
+        this._updateTitle();
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────
+    handleDailyStats(event) {
+        const { todayHours, draftCount, overdueCount } = event.detail;
+        if (todayHours   !== undefined) this.todayHours   = todayHours;
+        if (draftCount   !== undefined) this.draftCount   = draftCount;
+        if (overdueCount !== undefined) this.overdueCount = overdueCount;
+    }
+
+    // ── Private helpers ────────────────────────────────────────────────────
+
+    _trySwitch() {
+        if (this.activeTab === 'timeEntry' && this.draftCount > 0) {
+            const n = this.draftCount;
+            this.dispatchEvent(new ShowToastEvent({
+                title:   'Unsaved Draft Entries',
+                message: `You have ${n} unsaved draft entr${n === 1 ? 'y' : 'ies'} — submit or remove before switching tabs.`,
+                variant: 'warning',
+                mode:    'dismissible'
+            }));
+            return false;
+        }
+        return true;
+    }
+
+    _handleKeydown(event) {
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
+        const tag = document.activeElement?.tagName?.toLowerCase();
+        if (['input', 'textarea', 'select'].includes(tag)) return;
+
+        const visibleTabs = ['operations', 'timeEntry', 'calendar'].filter(t => this._tabVisible(t));
+        const idx = parseInt(event.key, 10) - 1;
+        if (idx >= 0 && idx < visibleTabs.length) {
+            const tab = visibleTabs[idx];
+            if (tab !== this.activeTab && this._trySwitch()) {
+                this.activeTab = tab;
+                this._saveTab(tab);
+                this._updateTitle();
+            }
+        }
+    }
+
+    _updateTitle() {
+        if (this.activeTab) {
+            document.title = TAB_TITLES[this.activeTab] || 'D.Law';
+        }
+    }
 
     _tabVisible(tab) {
         if (tab === 'operations') return this.showOperations;

@@ -2,7 +2,9 @@ public without sharing class OperationsConsoleController {
 
     private static final Set<String> CRITICAL_TYPES = new Set<String>{
         'SOL', 'Trial', 'Class Cert - Hearing', 'Discovery Cutoff',
-        'Opposition to MSJ', 'PMK depo', 'client deposition'
+        'Opposition to MSJ', 'PMK depo', 'client deposition',
+        'Motion Deadline', 'Motion for Summary Judgment Hearing',
+        'Discovery Deadline', 'Federal - Hearing', 'Federal - Trial'
     };
 
     @AuraEnabled
@@ -250,7 +252,7 @@ public without sharing class OperationsConsoleController {
                    OR Associate_Attorney__c = :userId
                    OR LSS_Paralegal__c = :userId
                 ORDER BY Name ASC
-                LIMIT 100
+                LIMIT 200
             ];
         } else {
             matters = [
@@ -258,7 +260,7 @@ public without sharing class OperationsConsoleController {
                        Senior_Attorney__r.Name, Associate_Attorney__r.Name, LSS_Paralegal__r.Name
                 FROM NEOS_Matter__c
                 ORDER BY LastModifiedDate DESC
-                LIMIT 200
+                LIMIT 500
             ];
         }
         List<Map<String, Object>> result = new List<Map<String, Object>>();
