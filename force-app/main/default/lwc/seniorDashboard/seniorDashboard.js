@@ -6,8 +6,8 @@ import getDashboardData from '@salesforce/apex/SeniorDashboardController.getDash
 const REFRESH_MS  = 5 * 60 * 1000;
 const DAILY_GOAL  = 8;
 
-const STATUS_LABELS = { atrisk: 'At Risk', caution: 'Needs Attention', ontrack: 'On Track' };
-const FILTER_LABELS = { all: 'All', atrisk: 'At Risk', caution: 'Attention', ontrack: 'On Track' };
+const STATUS_LABELS = { atrisk: 'At Risk', caution: 'Caution', ontrack: 'On Track' };
+const FILTER_LABELS = { all: 'All', atrisk: 'At Risk', caution: 'Caution', ontrack: 'On Track' };
 
 const STAGE_COLORS = [
     '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444',
@@ -108,21 +108,24 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             const dlLabel   = daysAway == null ? '' : daysAway === 0 ? 'Today' : daysAway === 1 ? '1 day' : `${daysAway} days`;
             const dlUrgent  = daysAway != null && daysAway <= 7;
             const dlCaution = daysAway != null && daysAway <= 14;
-            const lastEntry = m.lastEntryDate ? this._fmtDate(m.lastEntryDate) : 'Never';
+            const hasEntry    = !!m.lastEntryDate;
+            const lastEntry   = hasEntry ? this._fmtDate(m.lastEntryDate) : 'No entries';
             return {
                 ...m,
-                statusLabel:    STATUS_LABELS[m.status] || m.status,
-                statusClass:    `sd-matter-status sd-matter-status--${m.status}`,
-                rowClass:       `sd-matter-row sd-matter-row--${m.status}`,
+                statusLabel:     STATUS_LABELS[m.status] || m.status,
+                statusClass:     `sd-matter-status sd-matter-status--${m.status}`,
+                rowClass:        `sd-matter-row sd-matter-row--${m.status}`,
                 dlLabel,
-                dlType:         dl ? dl.eventType : '',
+                dlType:          dl ? dl.eventType : '',
                 dlUrgent,
                 dlCaution,
-                lastEntryLabel: lastEntry,
-                hasDeadline:    !!dl,
-                hasOverdue:     m.overdueTasks > 0,
-                hasTeamLabel:   !!(m.associateName || m.lssName),
-                teamLabel:      [m.associateName, m.lssName].filter(Boolean).join(' · ')
+                lastEntryLabel:  lastEntry,
+                lastEntryClass:  `sd-matter-entry${hasEntry ? '' : ' sd-matter-entry--never'}`,
+                hasDeadline:     !!dl,
+                hasOverdue:      m.overdueTasks > 0,
+                hasTeamLabel:    !!(m.associateName || m.lssName),
+                teamLabel:       [m.associateName, m.lssName].filter(Boolean).join(' · '),
+                hasRecordType:   !!m.recordType
             };
         });
     }
@@ -131,8 +134,10 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
         return rows.map(s => {
             const hrs    = Number(s.hoursToday) || 0;
             const pct    = Math.min(Math.round(hrs / DAILY_GOAL * 100), 100);
-            const status = hrs > 0 ? 'ontrack' : 'behind';
-            const initials = String(s.firstName || s.name || '').slice(0, 2).toUpperCase();
+            const status   = hrs > 0 ? 'ontrack' : 'behind';
+            const parts    = String(s.name || '').split(' ');
+            const initials = (String(s.firstName || parts[0] || '').slice(0, 1)
+                + (parts.length > 1 ? parts[parts.length - 1].slice(0, 1) : '')).toUpperCase();
             return {
                 ...s,
                 hoursDisplay:  Number(s.hoursToday).toFixed(1),
@@ -177,10 +182,11 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             return {
                 ...m,
                 segments,
-                hasSegments:  segments.length > 0,
+                hasSegments:   segments.length > 0,
                 showDrill,
-                drillTitle:   showDrill ? `${m.firstName} — ${this._activeDrillStage} (${drillMatters.length})` : '',
-                drillStage:   this._activeDrillStage || '',
+                drillTitle:    showDrill ? `${m.firstName} — ${this._activeDrillStage} (${drillMatters.length})` : '',
+                drillStage:    this._activeDrillStage || '',
+                drillCloseTip: `Close ${m.firstName}`,
                 drillMatters
             };
         });
@@ -188,13 +194,30 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
 
     /* ── Getters ── */
 
-    get refreshBtnLabel()         { return this.isRefreshing ? '…' : '↻'; }
-    get teamHoursTodayDisplay()   { return Number(this.teamHoursToday).toFixed(1); }
-    get teamHoursWeekDisplay()    { return Number(this.teamHoursWeek).toFixed(1); }
-    get hasMatterHealth()     { return this.matterHealth.length > 0; }
-    get hasTeamStats()        { return this.teamStats.length > 0; }
-    get hasChartData()        { return this.chartMembers.some(m => m.hasSegments); }
-    get todayLabel()          { return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); }
+    get refreshBtnLabel()           { return this.isRefreshing ? '…' : '↻'; }
+    get teamHoursTodayDisplay()     { return Number(this.teamHoursToday).toFixed(1); }
+    get teamHoursWeekDisplay()      { return Number(this.teamHoursWeek).toFixed(1); }
+    get hasMatterHealth()           { return this.matterHealth.length > 0; }
+    get hasTeamStats()              { return this.teamStats.length > 0; }
+    get showChartSection()          { return this.teamStats.length > 0; }
+    get hasChartData()              { return this.chartMembers.some(m => m.hasSegments); }
+    get todayLabel()                { return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); }
+
+    get teamHoursTodayCardClass() {
+        return this.teamHoursToday > 0 ? 'sd-sc sd-sc--blue' : 'sd-sc sd-sc--gray';
+    }
+    get teamHoursWeekCardClass() {
+        return this.teamHoursWeek > 0 ? 'sd-sc sd-sc--indigo' : 'sd-sc sd-sc--gray';
+    }
+    get teamHoursWeekPerPerson() {
+        if (!this.teamMemberCount) return '';
+        const avg = (Number(this.teamHoursWeek) / this.teamMemberCount).toFixed(1);
+        return `~${avg}h / person`;
+    }
+    get behindCountSub() {
+        if (this.behindCount === 0) return `All ${this.teamMemberCount} on track`;
+        return `of ${this.teamMemberCount} members`;
+    }
 
     get behindCardClass() {
         return this.behindCount > 0 ? 'sd-sc sd-sc--red' : 'sd-sc sd-sc--green';

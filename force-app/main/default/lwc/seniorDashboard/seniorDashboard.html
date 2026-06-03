@@ -25,7 +25,7 @@
                 <div class="sd-summary-row slds-var-p-horizontal_medium slds-var-p-bottom_medium">
 
                     <!-- Team Hours Today -->
-                    <div class="sd-sc sd-sc--blue">
+                    <div class={teamHoursTodayCardClass}>
                         <div class="sd-sc-main">
                             <div class="sd-sc-value">{teamHoursTodayDisplay}h</div>
                             <div class="sd-sc-label">Team Hours Today</div>
@@ -34,10 +34,13 @@
                     </div>
 
                     <!-- Team Hours This Week -->
-                    <div class="sd-sc sd-sc--indigo">
+                    <div class={teamHoursWeekCardClass}>
                         <div class="sd-sc-main">
-                            <div class="sd-sc-value sd-sc-value--indigo">{teamHoursWeekDisplay}h</div>
+                            <div class="sd-sc-value">{teamHoursWeekDisplay}h</div>
                             <div class="sd-sc-label">Team Hours This Week</div>
+                            <template if:true={teamHoursWeekPerPerson}>
+                                <div class="sd-sc-sub">{teamHoursWeekPerPerson}</div>
+                            </template>
                         </div>
                         <div class="sd-sc-icon sd-sc-icon--indigo">📅</div>
                     </div>
@@ -56,7 +59,7 @@
                         <div class="sd-sc-main">
                             <div class="sd-sc-value">{behindCount}</div>
                             <div class="sd-sc-label">Team Behind on Time</div>
-                            <div class="sd-sc-sub">of {teamMemberCount} members</div>
+                            <div class="sd-sc-sub">{behindCountSub}</div>
                         </div>
                         <div class={behindIconClass}>👥</div>
                     </div>
@@ -93,7 +96,12 @@
                                         <div class={m.statusClass}></div>
 
                                         <div class="sd-matter-body">
-                                            <div class="sd-matter-name">{m.name}</div>
+                                            <div class="sd-matter-name-row">
+                                                <span class="sd-matter-name">{m.name}</span>
+                                                <template if:true={m.hasRecordType}>
+                                                    <span class="sd-matter-rt">{m.recordType}</span>
+                                                </template>
+                                            </div>
                                             <template if:true={m.hasTeamLabel}>
                                                 <div class="sd-matter-team">{m.teamLabel}</div>
                                             </template>
@@ -104,7 +112,7 @@
                                                         ⚑ {m.dlType} · {m.dlLabel}
                                                     </span>
                                                 </template>
-                                                <span class="sd-matter-entry">
+                                                <span class={m.lastEntryClass}>
                                                     Last entry: {m.lastEntryLabel}
                                                 </span>
                                                 <template if:true={m.hasOverdue}>
@@ -179,7 +187,7 @@
                 </div>
 
                 <!-- ── Manager Chart ── -->
-                <template if:true={hasChartData}>
+                <template if:true={showChartSection}>
                     <div class="sd-chart-section slds-var-p-horizontal_medium slds-var-p-bottom_medium">
                         <div class="sd-panel">
                             <div class="sd-panel-header sd-chart-hdr">
@@ -194,6 +202,10 @@
                                 </div>
                             </div>
                             <div class="sd-chart-body">
+                                <template if:false={hasChartData}>
+                                    <div class="sd-empty sd-chart-empty">No active matters for your team.</div>
+                                </template>
+                                <template if:true={hasChartData}>
                                 <template for:each={chartMembers} for:item="member">
                                     <div key={member.id} class="sd-chart-member-block">
                                         <div class="sd-chart-row">
@@ -236,6 +248,7 @@
                                                     <button class="sd-chart-drill-close"
                                                             data-member-id={member.id}
                                                             data-stage={member.drillStage}
+                                                            title={member.drillCloseTip}
                                                             onclick={handleChartSegmentClick}>✕</button>
                                                 </div>
                                                 <div class="sd-chart-drill-list">
@@ -255,6 +268,7 @@
                                             </div>
                                         </template>
                                     </div>
+                                </template>
                                 </template>
                             </div>
                         </div>
