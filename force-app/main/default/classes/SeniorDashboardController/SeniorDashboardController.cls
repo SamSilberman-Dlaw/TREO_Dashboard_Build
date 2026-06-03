@@ -18,7 +18,7 @@ public without sharing class SeniorDashboardController {
     };
 
     private static final Set<String> CLOSED_STAGES = new Set<String>{
-        'File Closed', 'Closed', 'Dismissed', 'Archived', 'Closed/Inactive'
+        'File Closed', 'Closed', 'Dismissed', 'Archived'
     };
 
     @AuraEnabled
