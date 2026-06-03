@@ -271,7 +271,7 @@
                                             </div>
                                             <div class="sd-chart-bar-area">
                                                 <template if:true={member.hasSegments}>
-                                                    <div class="sd-chart-bar">
+                                                    <div class="sd-chart-bar" style={member.barStyle}>
                                                         <template for:each={member.segments} for:item="seg">
                                                             <button key={seg.stage}
                                                                     class={seg.btnClass}

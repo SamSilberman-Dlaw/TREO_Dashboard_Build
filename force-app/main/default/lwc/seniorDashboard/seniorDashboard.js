@@ -222,8 +222,10 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
 
     _buildChartRows() {
         const stageOrder = this.chartStageOrder;
+        const maxTotal   = Math.max(...this._rawChartMembers.map(m => m.total || 0), 1);
         this.chartMembers = this._rawChartMembers.map(m => {
             const total    = m.total || 0;
+            const barPct   = (total / maxTotal) * 100;
             const segments = (m.segments || []).map(seg => {
                 const si      = stageOrder.indexOf(seg.stage);
                 const color   = STAGE_COLORS[(si >= 0 ? si : 0) % STAGE_COLORS.length];
@@ -245,6 +247,7 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             return {
                 ...m,
                 segments,
+                barStyle:      `width:${barPct.toFixed(1)}%`,
                 hasSegments:   segments.length > 0,
                 showDrill,
                 drillTitle:    showDrill ? `${m.firstName} — ${this._activeDrillStage} (${drillMatters.length})` : '',
