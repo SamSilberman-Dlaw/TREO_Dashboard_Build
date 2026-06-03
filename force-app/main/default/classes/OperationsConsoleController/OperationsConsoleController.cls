@@ -1,29 +1,66 @@
 public without sharing class OperationsConsoleController {
 
+    private static final Set<String> TEAM_GROUP_NAMES = new Set<String>{
+        'Team Roman', 'Team Natalie', 'Team Enoch', 'Team DK', 'Team Arsine',
+        'Team Alvin', 'Team Adam'
+    };
+
     private static final Set<String> CRITICAL_TYPES = new Set<String>{
-        'SOL', 'Trial', 'Class Cert - Hearing', 'Discovery Cutoff',
-        'Opposition to MSJ', 'PMK depo', 'client deposition',
+        'SOL', 'Trial', 'Class Cert - Hearing', 'Class Cert - Deadline',
+        'Discovery Cutoff', 'Opposition to MSJ', 'PMK depo', 'client deposition',
         'Motion Deadline', 'Motion for Summary Judgment Hearing',
         'Discovery Deadline', 'Federal - Hearing', 'Federal - Trial'
     };
 
     @AuraEnabled
-    public static Map<String, Object> getConsoleData() {
+    public static Map<String, Object> getConsoleData(String targetUserId) {
         try {
             Id   userId     = UserInfo.getUserId();
             Date today      = Date.today();
             Date in360Days  = today.addDays(360);
 
-            /* ── Today's hours (current user) ── */
+            // Enforce permission when viewing another user's data
+            Id viewUserId = userId;
+            if (String.isNotBlank(targetUserId) && targetUserId != userId) {
+                Boolean hasOther = FeatureManagement.checkPermission('View_Other_Dockets');
+                Boolean hasTeam  = FeatureManagement.checkPermission('View_Team_Dockets');
+                if (!hasOther && !hasTeam) {
+                    throw new AuraHandledException('You do not have permission to view other users\' dockets.');
+                }
+                if (!hasOther && hasTeam) {
+                    // Validate the target user is in the caller's team group
+                    List<GroupMember> myGroup = [
+                        SELECT GroupId FROM GroupMember
+                        WHERE UserOrGroupId = :userId
+                          AND Group.Type = 'Regular'
+                          AND Group.Name IN :TEAM_GROUP_NAMES
+                        LIMIT 1
+                    ];
+                    if (myGroup.isEmpty()) {
+                        throw new AuraHandledException('You are not assigned to a team group.');
+                    }
+                    Integer inTeam = [
+                        SELECT COUNT() FROM GroupMember
+                        WHERE GroupId = :myGroup[0].GroupId
+                          AND UserOrGroupId = :(Id) targetUserId
+                    ];
+                    if (inTeam == 0) {
+                        throw new AuraHandledException('You can only view dockets of your team members.');
+                    }
+                }
+                viewUserId = (Id) targetUserId;
+            }
+
+            /* ── Today's hours (viewed user) ── */
             Decimal todayHours = 0;
             for (AggregateResult ar : [
                 SELECT SUM(Submit_Hours__c) hrs FROM Time_Entry__c
-                WHERE Entry_Date__c = TODAY AND Staff__c = :userId
+                WHERE Entry_Date__c = TODAY AND Staff__c = :viewUserId
             ]) {
                 if (ar.get('hrs') != null) todayHours = (Decimal) ar.get('hrs');
             }
 
-            /* ── This week's hours Sun–Sat (current user, matches SF THIS WEEK filter) ── */
+            /* ── This week's hours Sun–Sat (viewed user, matches SF THIS WEEK filter) ── */
             Date weekStart = today.toStartOfWeek(); // Sunday
             Date weekEnd   = weekStart.addDays(6);  // Saturday
             Decimal last7Hours = 0;
@@ -32,7 +69,7 @@ public without sharing class OperationsConsoleController {
                 SELECT Entry_Date__c edate, SUM(Submit_Hours__c) hrs
                 FROM Time_Entry__c
                 WHERE Entry_Date__c >= :weekStart AND Entry_Date__c <= :weekEnd
-                AND Staff__c = :userId
+                AND Staff__c = :viewUserId
                 GROUP BY Entry_Date__c ORDER BY Entry_Date__c ASC
             ]) {
                 Decimal hrs = ar.get('hrs') != null ? (Decimal) ar.get('hrs') : 0;
@@ -43,29 +80,29 @@ public without sharing class OperationsConsoleController {
                 });
             }
 
-            /* ── Open task summary counts ── */
+            /* ── Open task summary counts (viewed user) ── */
             Integer openTaskCount    = 0;
             Integer overdueTaskCount = 0;
             for (AggregateResult ar : [
                 SELECT COUNT(Id) cnt FROM Task
-                WHERE OwnerId = :userId AND IsClosed = false AND What.Type = 'NEOS_Matter__c'
+                WHERE OwnerId = :viewUserId AND IsClosed = false AND What.Type = 'NEOS_Matter__c'
             ]) {
                 openTaskCount = ar.get('cnt') != null ? (Integer) ar.get('cnt') : 0;
             }
             for (AggregateResult ar : [
                 SELECT COUNT(Id) cnt FROM Task
-                WHERE OwnerId = :userId AND IsClosed = false AND What.Type = 'NEOS_Matter__c' AND ActivityDate < TODAY
+                WHERE OwnerId = :viewUserId AND IsClosed = false AND What.Type = 'NEOS_Matter__c' AND ActivityDate < TODAY
             ]) {
                 overdueTaskCount = ar.get('cnt') != null ? (Integer) ar.get('cnt') : 0;
             }
 
-            /* ── My tasks list: open, due within next 30 days or overdue ── */
+            /* ── Task list (viewed user): open, due within 360 days or overdue ── */
             List<Map<String, Object>> myTasks = new List<Map<String, Object>>();
             for (Task t : [
                 SELECT Id, Subject, ActivityDate, Status, IsClosed,
                        WhatId, What.Name, Priority
                 FROM Task
-                WHERE OwnerId = :userId
+                WHERE OwnerId = :viewUserId
                   AND IsClosed = false
                   AND What.Type = 'NEOS_Matter__c'
                   AND (ActivityDate = null OR ActivityDate <= :in360Days)
@@ -84,7 +121,7 @@ public without sharing class OperationsConsoleController {
                 });
             }
 
-            /* ── Critical deadlines (next 9 months) ── */
+            /* ── Critical deadlines (next 9 months, scoped to viewed user's matters) ── */
             List<Map<String, Object>> criticalDeadlines = new List<Map<String, Object>>();
             try {
                 String typeList = '(\'' + String.join(new List<String>(CRITICAL_TYPES), '\',\'') + '\')';
@@ -96,24 +133,35 @@ public without sharing class OperationsConsoleController {
                     '   AND Status__c = \'Active\'' +
                     '   AND DAY_ONLY(Start_DateTime__c) >= TODAY' +
                     '   AND DAY_ONLY(Start_DateTime__c) <= :in360Days' +
-                    '   AND (Matter__r.Senior_Attorney__c = :userId' +
-                    '     OR Matter__r.Associate_Attorney__c = :userId' +
-                    '     OR Matter__r.LSS_Paralegal__c = :userId)' +
+                    '   AND (Matter__r.Senior_Attorney__c = :viewUserId' +
+                    '     OR Matter__r.Associate_Attorney__c = :viewUserId' +
+                    '     OR Matter__r.LSS_Paralegal__c = :viewUserId)' +
                     ' ORDER BY Start_DateTime__c ASC LIMIT 50';
                 for (SObject dlRow : Database.query(dlSoql)) {
                     criticalDeadlines.add(buildDeadlineRow(dlRow, today));
                 }
             } catch (Exception ignored) {}
 
-            /* ── My events: Calendar_Event__c records where logged-in user is an attendee ── */
+            /* ── Events: Calendar_Event__c records where viewed user is an attendee ── */
             List<Map<String, Object>> myEvents = new List<Map<String, Object>>();
             try {
-                myEvents = buildMyEvents(userId, today, in360Days);
+                myEvents = buildMyEvents(viewUserId, today, in360Days);
             } catch (Exception ignored) {}
 
             Integer criticalCount = criticalDeadlines.size();
             Integer daysToNext    = (criticalCount > 0 && criticalDeadlines[0].get('daysAway') != null)
                 ? (Integer) criticalDeadlines[0].get('daysAway') : -1;
+
+            // Resolve viewed user's display name when different from the running user
+            String viewFirstName = UserInfo.getFirstName();
+            String viewFullName  = UserInfo.getName();
+            if (viewUserId != userId) {
+                List<User> viewedUsers = [SELECT FirstName, Name FROM User WHERE Id = :viewUserId LIMIT 1];
+                if (!viewedUsers.isEmpty()) {
+                    viewFirstName = viewedUsers[0].FirstName;
+                    viewFullName  = viewedUsers[0].Name;
+                }
+            }
 
             Map<String, Object> result = new Map<String, Object>();
             result.put('todayHours',        todayHours);
@@ -126,9 +174,12 @@ public without sharing class OperationsConsoleController {
             result.put('daysToNext',        daysToNext);
             result.put('myEvents',          myEvents);
             result.put('myTasks',           myTasks);
-            result.put('currentUserId',     userId);
+            result.put('currentUserId',     userId);          // always the running user
             result.put('currentUserName',   UserInfo.getName());
             result.put('firstName',         UserInfo.getFirstName());
+            result.put('viewUserId',        String.valueOf(viewUserId));
+            result.put('viewFirstName',     viewFirstName);
+            result.put('viewFullName',      viewFullName);
             return result;
         } catch (Exception e) {
             throw new AuraHandledException(e.getTypeName() + ': ' + e.getMessage());
@@ -146,13 +197,15 @@ public without sharing class OperationsConsoleController {
 
     /* ── Matter search: by matter name (SOSL), attorney name (SOSL→SOQL), jurisdiction (SOQL) ── */
     @AuraEnabled(cacheable=true)
-    public static List<Map<String, Object>> searchMatters(String query, Boolean myOnly) {
+    public static List<Map<String, Object>> searchMatters(String query, Boolean myOnly, String targetUserId) {
         if (String.isBlank(query) || query.trim().length() < 2)
             return new List<Map<String, Object>>();
 
         String term = query.trim() + '*';
         String lk   = '%' + query.trim() + '%';
-        Id     uid  = UserInfo.getUserId();
+        Id     uid  = (String.isNotBlank(targetUserId) && myOnly == true)
+                          ? (Id) targetUserId
+                          : UserInfo.getUserId();
         Set<Id> matchedIds = new Set<Id>();
 
         // 1. Single SOSL: match matter names + user names simultaneously
@@ -240,8 +293,10 @@ public without sharing class OperationsConsoleController {
 
     /* ── Initial matter list for picker (top 100 sorted by name) ── */
     @AuraEnabled(cacheable=true)
-    public static List<Map<String, Object>> getRecentMatters(Boolean myOnly) {
-        Id userId = UserInfo.getUserId();
+    public static List<Map<String, Object>> getRecentMatters(Boolean myOnly, String targetUserId) {
+        Id userId = (String.isNotBlank(targetUserId) && myOnly == true)
+                        ? (Id) targetUserId
+                        : UserInfo.getUserId();
         List<NEOS_Matter__c> matters;
         if (myOnly == true) {
             matters = [
@@ -266,6 +321,32 @@ public without sharing class OperationsConsoleController {
         List<Map<String, Object>> result = new List<Map<String, Object>>();
         for (NEOS_Matter__c m : matters) {
             result.add(matterToMap(m));
+        }
+        return result;
+    }
+
+    /* ── Team members from the caller's public group (for View_Team_Dockets) ── */
+    @AuraEnabled(cacheable=true)
+    public static List<Map<String, Object>> getMyTeamStaff() {
+        Id userId = UserInfo.getUserId();
+        List<GroupMember> myGroup = [
+            SELECT GroupId FROM GroupMember
+            WHERE UserOrGroupId = :userId
+              AND Group.Type = 'Regular'
+              AND Group.Name IN :TEAM_GROUP_NAMES
+            LIMIT 1
+        ];
+        if (myGroup.isEmpty()) return new List<Map<String, Object>>();
+        Id groupId = myGroup[0].GroupId;
+        Set<Id> memberIds = new Set<Id>();
+        for (GroupMember gm : [SELECT UserOrGroupId FROM GroupMember WHERE GroupId = :groupId]) {
+            if (gm.UserOrGroupId.getSObjectType() == User.SObjectType && gm.UserOrGroupId != userId) {
+                memberIds.add(gm.UserOrGroupId);
+            }
+        }
+        List<Map<String, Object>> result = new List<Map<String, Object>>();
+        for (User u : [SELECT Id, Name, FirstName FROM User WHERE Id IN :memberIds AND IsActive = true ORDER BY Name ASC]) {
+            result.add(new Map<String, Object>{ 'id' => u.Id, 'name' => u.Name, 'firstName' => u.FirstName });
         }
         return result;
     }

@@ -1,17 +1,22 @@
 import { LightningElement, track } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import HAS_VIEW_OTHER_DOCKETS from '@salesforce/customPermission/View_Other_Dockets';
+import HAS_VIEW_TEAM_DOCKETS  from '@salesforce/customPermission/View_Team_Dockets';
 import getConsoleData    from '@salesforce/apex/OperationsConsoleController.getConsoleData';
 import completeTask      from '@salesforce/apex/OperationsConsoleController.completeTask';
 import searchMatters     from '@salesforce/apex/OperationsConsoleController.searchMatters';
 import getRecentMatters  from '@salesforce/apex/OperationsConsoleController.getRecentMatters';
 import getEligibleStaff  from '@salesforce/apex/OperationsConsoleController.getEligibleStaff';
+import getMyTeamStaff    from '@salesforce/apex/OperationsConsoleController.getMyTeamStaff';
 import submitTimeEntries from '@salesforce/apex/OperationsConsoleController.submitTimeEntries';
+import getTeams          from '@salesforce/apex/TimeEntryDashboardController.getTeams';
 
 const DOT_CLASSES = {
     'SOL':                                 'deadline-dot deadline-dot--red',
     'Trial':                               'deadline-dot deadline-dot--purple',
     'Class Cert - Hearing':                'deadline-dot deadline-dot--orange',
+    'Class Cert - Deadline':               'deadline-dot deadline-dot--orange',
     'Discovery Cutoff':                    'deadline-dot deadline-dot--blue',
     'Opposition to MSJ':                   'deadline-dot deadline-dot--indigo',
     'PMK Depo':                            'deadline-dot deadline-dot--green',
@@ -28,6 +33,7 @@ const TYPE_BADGE_CLASSES = {
     'SOL':                                 'type-badge type-badge--red',
     'Trial':                               'type-badge type-badge--purple',
     'Class Cert - Hearing':                'type-badge type-badge--orange',
+    'Class Cert - Deadline':               'type-badge type-badge--orange',
     'Discovery Cutoff':                    'type-badge type-badge--blue',
     'Opposition to MSJ':                   'type-badge type-badge--indigo',
     'PMK Depo':                            'type-badge type-badge--green',
@@ -82,6 +88,15 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     @track isPickerLoading = false;
     @track eligibleStaff   = [];
 
+    /* ── View-as state (sb2026 permission only) ── */
+    _viewingUserId         = '';
+    _viewingUserName       = '';
+    @track viewerDropdownOpen = false;
+    @track viewerTeamId       = '';
+    @track viewerTeamOptions  = [];
+    _viewerTeamsData          = [];
+    _myTeamStaff              = [];
+
     /* ── Entry cards ── */
     @track draftEntries      = [];
     @track isSubmitting      = false;
@@ -111,6 +126,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     _pickerTab           = 'my';
     _pickerSearch        = '';
     _allPickerMatters    = [];
+    _checkedMatterMap    = new Map(); // id → matter object, persists across searches
     _entryCounter        = 0;
     _searchTimer         = null;
     _refreshInterval     = null;
@@ -123,6 +139,21 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
         getEligibleStaff()
             .then(data => { this.eligibleStaff = data; })
             .catch(() => {});
+        if (HAS_VIEW_OTHER_DOCKETS) {
+            getTeams()
+                .then(teams => {
+                    this._viewerTeamsData  = teams;
+                    this.viewerTeamOptions = [
+                        { label: 'All Teams', value: '' },
+                        ...teams.map(t => ({ label: t.name, value: t.id }))
+                    ];
+                })
+                .catch(() => {});
+        } else if (HAS_VIEW_TEAM_DOCKETS) {
+            getMyTeamStaff()
+                .then(staff => { this._myTeamStaff = staff; })
+                .catch(() => {});
+        }
         // eslint-disable-next-line @lwc/lwc/no-async-operation
         this._refreshInterval = setInterval(() => this._silentRefresh(), REFRESH_MS);
         this._handleFocusIn  = (e) => {
@@ -181,7 +212,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
 
     _load() {
         this.isLoading = true;
-        getConsoleData()
+        getConsoleData({ targetUserId: this._viewingUserId || null })
             .then(data => this._applyConsoleData(data))
             .catch(err => {
                 this.isLoading = false;
@@ -194,7 +225,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     }
 
     _silentRefresh() {
-        getConsoleData()
+        getConsoleData({ targetUserId: this._viewingUserId || null })
             .then(data => this._applyConsoleData(data))
             .catch(() => {});
     }
@@ -213,7 +244,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
 
     handleRefresh() {
         this.isRefreshing = true;
-        getConsoleData()
+        getConsoleData({ targetUserId: this._viewingUserId || null })
             .then(data => { this._applyConsoleData(data); this.isRefreshing = false; })
             .catch(() => { this.isRefreshing = false; });
     }
@@ -488,7 +519,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     }
 
     _withChecks(matters) {
-        const checkedIds = new Set(this.pickerMatters.filter(m => m.checked).map(m => m.id));
+        const checkedIds = new Set(this._checkedMatterMap.keys());
         const addedIds   = new Set(this.draftEntries.map(d => d.matterId));
         return matters.map(m => {
             const checked = checkedIds.has(m.id);
@@ -612,6 +643,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
             { key: 'SOL',                                 label: 'SOL'                                 },
             { key: 'Trial',                               label: 'Trial'                               },
             { key: 'Class Cert - Hearing',                label: 'Class Cert - Hearing'                },
+            { key: 'Class Cert - Deadline',               label: 'Class Cert - Deadline'               },
             { key: 'Discovery Cutoff',                    label: 'Discovery Cutoff'                    },
             { key: 'Opposition to MSJ',                   label: 'Opposition to MSJ'                   },
             { key: 'PMK Depo',                            label: 'PMK Depo'                            },
@@ -675,7 +707,8 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     get taskFilter9MClass()    { return 'task-filter-btn' + (this._taskFilter === '270'   ? ' task-filter-btn--active' : ''); }
     get taskFilter12MClass()   { return 'task-filter-btn' + (this._taskFilter === '360'   ? ' task-filter-btn--active' : ''); }
 
-    get myTabClass()       { return 'picker-tab' + (this._pickerTab === 'my'  ? ' picker-tab--active' : ''); }
+    get myTabClass()        { return 'picker-tab' + (this._pickerTab === 'my'  ? ' picker-tab--active' : ''); }
+    get myPickerTabLabel()  { return this._viewingUserId ? `${this._viewingUserName.split(' ')[0]}'s Cases` : 'My Cases'; }
     get allTabClass()      { return 'picker-tab' + (this._pickerTab === 'all' ? ' picker-tab--active' : ''); }
     get pickerSearch()     { return this._pickerSearch; }
     get hasPickerMatters() { return this.pickerMatters.length > 0; }
@@ -684,12 +717,12 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     }
     get pickerCountLabel() {
         const total   = this.pickerMatters.length;
-        const checked = this.pickerMatters.filter(m => m.checked).length;
+        const checked = this._checkedMatterMap.size;
         return `${total} items${checked > 0 ? ` · ${checked} selected` : ''}`;
     }
-    get addEntriesDisabled() { return !this.pickerMatters.some(m => m.checked); }
+    get addEntriesDisabled() { return this._checkedMatterMap.size === 0; }
     get addEntriesBtnLabel() {
-        const n = this.pickerMatters.filter(m => m.checked).length;
+        const n = this._checkedMatterMap.size;
         return n > 0 ? `Add ${n} ${n === 1 ? 'Entry' : 'Entries'} ›` : 'Add Entries ›';
     }
 
@@ -741,6 +774,73 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
             return 'te-ready-label te-ready-label--error';
         }
         return 'te-ready-label';
+    }
+
+    /* ── View-as (sb2026 only) ── */
+
+    get hasViewOtherDockets() { return HAS_VIEW_OTHER_DOCKETS; }
+    get hasViewTeamDockets()  { return HAS_VIEW_TEAM_DOCKETS; }
+    get showViewerEye()       { return HAS_VIEW_OTHER_DOCKETS || HAS_VIEW_TEAM_DOCKETS; }
+    get isViewingOther()      { return !!this._viewingUserId; }
+    get viewingLabel()        { return this._viewingUserName || 'You'; }
+
+    get staffPickerOptions() {
+        if (HAS_VIEW_TEAM_DOCKETS && !HAS_VIEW_OTHER_DOCKETS) {
+            return this._myTeamStaff.map(s => ({
+                value:     s.id,
+                label:     s.name,
+                itemClass: 'viewer-item' + (s.id === this._viewingUserId ? ' viewer-item--active' : '')
+            }));
+        }
+        const teamFilter = this.viewerTeamId
+            ? new Set((this._viewerTeamsData.find(t => t.id === this.viewerTeamId) || {}).memberIds || [])
+            : null;
+        return this.eligibleStaff
+            .filter(s => s.id !== this._currentUserId)
+            .filter(s => !teamFilter || teamFilter.has(s.id))
+            .map(s => ({
+                value:     s.id,
+                label:     s.name,
+                itemClass: 'viewer-item' + (s.id === this._viewingUserId ? ' viewer-item--active' : '')
+            }));
+    }
+
+    get hasViewerTeams() { return this.viewerTeamOptions.length > 1; }
+
+    toggleViewerDropdown() {
+        this.viewerDropdownOpen = !this.viewerDropdownOpen;
+    }
+
+    closeViewerDropdown() {
+        this.viewerDropdownOpen = false;
+    }
+
+    handleViewerTeamChange(e) {
+        this.viewerTeamId = e.target.value;
+    }
+
+    handleViewAsUser(e) {
+        const id   = e.currentTarget.dataset.id;
+        const name = e.currentTarget.dataset.name;
+        this._viewingUserId     = id;
+        this._viewingUserName   = name;
+        this.viewerDropdownOpen = false;
+        this.viewerTeamId       = '';
+        this._pickerTab         = 'my';
+        this._pickerSearch      = '';
+        this._load();
+        this._loadPickerMatters();
+    }
+
+    resetToSelf() {
+        this._viewingUserId     = '';
+        this._viewingUserName   = '';
+        this.viewerDropdownOpen = false;
+        this.viewerTeamId       = '';
+        this._pickerTab         = 'my';
+        this._pickerSearch      = '';
+        this._load();
+        this._loadPickerMatters();
     }
 
     /* ── Deadline drawer ── */
@@ -982,7 +1082,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
 
     _loadPickerMatters() {
         this.isPickerLoading = true;
-        getRecentMatters({ myOnly: this._pickerTab === 'my' })
+        getRecentMatters({ myOnly: this._pickerTab === 'my', targetUserId: this._viewingUserId || null })
             .then(data => {
                 this._allPickerMatters = data;
                 this.pickerMatters     = this._withChecks(data);
@@ -992,16 +1092,18 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     }
 
     switchPickerTab(e) {
-        this._pickerTab    = e.currentTarget.dataset.tab;
-        this._pickerSearch = '';
-        this.pickerMatters = [];
+        this._pickerTab        = e.currentTarget.dataset.tab;
+        this._pickerSearch     = '';
+        this._checkedMatterMap = new Map();
+        this.pickerMatters     = [];
         this._loadPickerMatters();
     }
 
     switchToAllCases() {
-        this._pickerTab    = 'all';
-        this._pickerSearch = '';
-        this.pickerMatters = [];
+        this._pickerTab        = 'all';
+        this._pickerSearch     = '';
+        this._checkedMatterMap = new Map();
+        this.pickerMatters     = [];
         this._loadPickerMatters();
     }
 
@@ -1021,7 +1123,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
             return;
         }
         this._searchTimer = setTimeout(() => {
-            searchMatters({ query: this._pickerSearch, myOnly: this._pickerTab === 'my' })
+            searchMatters({ query: this._pickerSearch, myOnly: this._pickerTab === 'my', targetUserId: this._viewingUserId || null })
                 .then(data => { this.pickerMatters = this._withChecks(data); })
                 .catch(() => {});
         }, 300);
@@ -1029,9 +1131,15 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
 
     toggleMatterCheck(e) {
         const id = e.currentTarget.dataset.id;
+        if (this._checkedMatterMap.has(id)) {
+            this._checkedMatterMap.delete(id);
+        } else {
+            const matter = this.pickerMatters.find(m => m.id === id);
+            if (matter) this._checkedMatterMap.set(id, matter);
+        }
+        const checked = this._checkedMatterMap.has(id);
         this.pickerMatters = this.pickerMatters.map(m => {
             if (m.id !== id) return m;
-            const checked = !m.checked;
             const cls = 'picker-row'
                 + (checked ? ' picker-row--checked' : '')
                 + (m.isAdded && !checked ? ' picker-row--added' : '');
@@ -1040,7 +1148,7 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     }
 
     addSelectedAsEntries() {
-        const selected  = this.pickerMatters.filter(m => m.checked);
+        const selected  = [...this._checkedMatterMap.values()];
         if (!selected.length) return;
         const existingIds = new Set(this.draftEntries.map(d => d.matterId));
         const toAdd       = selected.filter(m => !existingIds.has(m.id));
@@ -1231,10 +1339,11 @@ export default class DlawOperationsConsole extends NavigationMixin(LightningElem
     }
 
     handleSubmitMore() {
-        this._panelView       = 'pick';
-        this._batchDate       = '';
-        this.submittedEntries = [];
-        this.pickerMatters    = this.pickerMatters.map(m => ({
+        this._panelView        = 'pick';
+        this._batchDate        = '';
+        this._checkedMatterMap = new Map();
+        this.submittedEntries  = [];
+        this.pickerMatters     = this.pickerMatters.map(m => ({
             ...m, checked: false, isAdded: false, rowClass: 'picker-row'
         }));
     }

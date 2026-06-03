@@ -17,9 +17,10 @@ public with sharing class DlawShellController {
                 'profile'  => prof,
                 'role'     => u.UserRole != null ? u.UserRole.Name : null,
                 'tabs'     => new Map<String, Boolean>{
-                    'operations' => isAdmin || FeatureManagement.checkPermission('View_Operations_Tab'),
-                    'timeEntry'  => isAdmin || FeatureManagement.checkPermission('View_Time_Entry_Tab'),
-                    'calendar'   => isAdmin || FeatureManagement.checkPermission('View_Calendar_Tab')
+                    'operations'      => isAdmin || FeatureManagement.checkPermission('View_Operations_Tab'),
+                    'timeEntry'       => isAdmin || FeatureManagement.checkPermission('View_Time_Entry_Tab'),
+                    'calendar'        => isAdmin || FeatureManagement.checkPermission('View_Calendar_Tab'),
+                    'seniorDashboard' => isAdmin || FeatureManagement.checkPermission('View_Senior_Dashboard')
                 }
             };
         } catch (Exception e) {

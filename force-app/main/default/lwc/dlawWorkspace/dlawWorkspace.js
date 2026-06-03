@@ -5,9 +5,10 @@ import getShellConfig from '@salesforce/apex/DlawShellController.getShellConfig'
 const LS_KEY = 'dlaw_workspace_tab';
 
 const TAB_TITLES = {
-    operations: 'D.Law — Docket',
-    timeEntry:  'D.Law — Firm Time Entries',
-    calendar:   'D.Law — Firm Calendar'
+    operations:      'D.Law — Docket',
+    timeEntry:       'D.Law — Firm Time Entries',
+    calendar:        'D.Law — Firm Calendar',
+    seniorDashboard: 'D.Law — Senior Dashboard'
 };
 
 export default class DlawWorkspace extends LightningElement {
@@ -24,7 +25,7 @@ export default class DlawWorkspace extends LightningElement {
         if (data) {
             this.config = data;
         } else if (error) {
-            this.config = { userName: '', profile: '', tabs: { operations: false, timeEntry: false, calendar: false } };
+            this.config = { userName: '', profile: '', tabs: { operations: false, timeEntry: false, calendar: false, seniorDashboard: false } };
         } else {
             return;
         }
@@ -38,6 +39,8 @@ export default class DlawWorkspace extends LightningElement {
             this.activeTab = 'timeEntry';
         } else if (this.showCalendar) {
             this.activeTab = 'calendar';
+        } else if (this.showSeniorDashboard) {
+            this.activeTab = 'seniorDashboard';
         }
 
         this._updateTitle();
@@ -56,28 +59,32 @@ export default class DlawWorkspace extends LightningElement {
 
     // ── Visibility flags ──────────────────────────────────────────────────
 
-    get isReady()        { return !!this.config; }
-    get showOperations() { return !!this.config?.tabs?.operations; }
-    get showTimeEntry()  { return !!this.config?.tabs?.timeEntry; }
-    get showCalendar()   { return !!this.config?.tabs?.calendar; }
+    get isReady()              { return !!this.config; }
+    get showOperations()       { return !!this.config?.tabs?.operations; }
+    get showTimeEntry()        { return !!this.config?.tabs?.timeEntry; }
+    get showCalendar()         { return !!this.config?.tabs?.calendar; }
+    get showSeniorDashboard()  { return !!this.config?.tabs?.seniorDashboard; }
 
     // ── Active state ──────────────────────────────────────────────────────
 
-    get isOperationsActive() { return this.activeTab === 'operations'; }
-    get isCalendarActive()   { return this.activeTab === 'calendar'; }
-    get isTimeEntryActive()  { return this.activeTab === 'timeEntry'; }
+    get isOperationsActive()      { return this.activeTab === 'operations'; }
+    get isCalendarActive()        { return this.activeTab === 'calendar'; }
+    get isTimeEntryActive()       { return this.activeTab === 'timeEntry'; }
+    get isSeniorDashboardActive() { return this.activeTab === 'seniorDashboard'; }
 
     // ── Tab button classes ─────────────────────────────────────────────────
 
-    get operationsTabClass() { return this._tabCls('operations'); }
-    get calendarTabClass()   { return this._tabCls('calendar'); }
-    get timeEntryTabClass()  { return this._tabCls('timeEntry'); }
+    get operationsTabClass()      { return this._tabCls('operations'); }
+    get calendarTabClass()        { return this._tabCls('calendar'); }
+    get timeEntryTabClass()       { return this._tabCls('timeEntry'); }
+    get seniorDashboardTabClass() { return this._tabCls('seniorDashboard'); }
 
     // ── Panel classes ──────────────────────────────────────────────────────
 
-    get operationsPanelClass() { return this._panelCls('operations'); }
-    get calendarPanelClass()   { return this._panelCls('calendar'); }
-    get timeEntryPanelClass()  { return this._panelCls('timeEntry'); }
+    get operationsPanelClass()      { return this._panelCls('operations'); }
+    get calendarPanelClass()        { return this._panelCls('calendar'); }
+    get timeEntryPanelClass()       { return this._panelCls('timeEntry'); }
+    get seniorDashboardPanelClass() { return this._panelCls('seniorDashboard'); }
 
     // ── Header display ─────────────────────────────────────────────────────
 
@@ -165,9 +172,10 @@ export default class DlawWorkspace extends LightningElement {
     }
 
     _tabVisible(tab) {
-        if (tab === 'operations') return this.showOperations;
-        if (tab === 'calendar')   return this.showCalendar;
-        if (tab === 'timeEntry')  return this.showTimeEntry;
+        if (tab === 'operations')      return this.showOperations;
+        if (tab === 'calendar')        return this.showCalendar;
+        if (tab === 'timeEntry')       return this.showTimeEntry;
+        if (tab === 'seniorDashboard') return this.showSeniorDashboard;
         return false;
     }
 

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Allows senior staff to view another user's docket (deadlines, events, tasks, time stats) from the Operations Console</description>
+    <label>View Other Dockets</label>
+</CustomPermission>

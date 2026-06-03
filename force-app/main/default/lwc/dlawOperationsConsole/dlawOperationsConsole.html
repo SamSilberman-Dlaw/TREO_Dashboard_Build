@@ -2,6 +2,53 @@
     <lightning-card title="My Docket">
 
         <div slot="actions" class="header-actions">
+
+            <!-- View-as picker: rendered for View_Other_Dockets or View_Team_Dockets -->
+            <template if:true={showViewerEye}>
+                <div class="viewer-switcher">
+                    <template if:true={viewerDropdownOpen}>
+                        <div class="dropdown-overlay" onclick={closeViewerDropdown}></div>
+                    </template>
+                    <button type="button" class="viewer-trigger" onclick={toggleViewerDropdown}
+                            title="Switch docket view">
+                        <span class="viewer-eye">👁</span>
+                        <span class="viewer-label">{viewingLabel}</span>
+                        <span class="viewer-caret">▾</span>
+                    </button>
+                    <template if:true={viewerDropdownOpen}>
+                        <div class="viewer-dropdown">
+                            <template if:true={isViewingOther}>
+                                <button type="button" class="viewer-item viewer-item--self"
+                                        onclick={resetToSelf}>
+                                    ← Your Docket
+                                </button>
+                                <div class="viewer-divider"></div>
+                            </template>
+                            <template if:true={hasViewerTeams}>
+                                <div class="viewer-team-row">
+                                    <select class="viewer-team-select" onchange={handleViewerTeamChange}>
+                                        <template for:each={viewerTeamOptions} for:item="opt">
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        </template>
+                                    </select>
+                                </div>
+                            </template>
+                            <div class="viewer-staff-list">
+                                <template for:each={staffPickerOptions} for:item="s">
+                                    <button key={s.value} type="button"
+                                            class={s.itemClass}
+                                            data-id={s.value}
+                                            data-name={s.label}
+                                            onclick={handleViewAsUser}>
+                                        {s.label}
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
             <template if:true={lastRefreshLabel}>
                 <span class="last-refresh-label">Updated {lastRefreshLabel}</span>
             </template>
@@ -19,6 +66,17 @@
 
         <template if:false={isLoading}>
             <div class="console-body">
+
+                <!-- ── Viewing-other banner ── -->
+                <template if:true={isViewingOther}>
+                    <div class="viewing-banner">
+                        <span class="viewing-banner-icon">👁</span>
+                        <span>Viewing <strong>{viewingLabel}</strong>'s docket</span>
+                        <button type="button" class="viewing-banner-reset" onclick={resetToSelf}>
+                            Back to yours
+                        </button>
+                    </div>
+                </template>
 
                 <!-- ── Summary Cards ── -->
                 <div class="summary-row slds-var-p-horizontal_medium slds-var-p-bottom_medium">
@@ -494,7 +552,7 @@
 
                                 <div class="picker-tabs">
                                     <button type="button" class={myTabClass}
-                                            data-tab="my" onclick={switchPickerTab}>My Cases</button>
+                                            data-tab="my" onclick={switchPickerTab}>{myPickerTabLabel}</button>
                                     <button type="button" class={allTabClass}
                                             data-tab="all" onclick={switchPickerTab}>All Cases</button>
                                 </div>

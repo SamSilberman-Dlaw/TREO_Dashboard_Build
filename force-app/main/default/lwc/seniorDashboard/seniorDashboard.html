@@ -1,0 +1,184 @@
+<template>
+    <lightning-card title="Senior Dashboard">
+
+        <div slot="actions" class="sd-header-actions">
+            <template if:true={lastRefreshLabel}>
+                <span class="sd-refresh-label">Updated {lastRefreshLabel}</span>
+            </template>
+            <button type="button" class="sd-refresh-btn" onclick={handleRefresh}
+                    title="Refresh" disabled={isRefreshing}>
+                {refreshBtnLabel}
+            </button>
+        </div>
+
+        <!-- Loading -->
+        <template if:true={isLoading}>
+            <div class="sd-loading">
+                <lightning-spinner alternative-text="Loading" size="medium"></lightning-spinner>
+            </div>
+        </template>
+
+        <template if:false={isLoading}>
+            <div class="sd-body">
+
+                <!-- ── Summary Cards ── -->
+                <div class="sd-summary-row slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+
+                    <!-- My Hours Today -->
+                    <div class="sd-sc sd-sc--blue">
+                        <div class="sd-sc-main">
+                            <div class="sd-sc-value">{myHoursTodayDisplay}h</div>
+                            <div class="sd-sc-label">My Hours Today</div>
+                        </div>
+                        <div class="sd-sc-icon sd-sc-icon--blue">⏱</div>
+                    </div>
+
+                    <!-- My Hours This Week -->
+                    <div class="sd-sc sd-sc--indigo">
+                        <div class="sd-sc-main">
+                            <div class="sd-sc-value sd-sc-value--indigo">{myHoursWeekDisplay}h</div>
+                            <div class="sd-sc-label">My Hours This Week</div>
+                        </div>
+                        <div class="sd-sc-icon sd-sc-icon--indigo">📅</div>
+                    </div>
+
+                    <!-- Upcoming Deadlines (14 days) -->
+                    <div class={upcomingCardClass}>
+                        <div class="sd-sc-main">
+                            <div class="sd-sc-value">{upcomingDeadlines}</div>
+                            <div class="sd-sc-label">Deadlines in 14 Days</div>
+                        </div>
+                        <div class="sd-sc-icon sd-sc-icon--orange">⚠</div>
+                    </div>
+
+                    <!-- Team Behind on Time -->
+                    <div class={behindCardClass}>
+                        <div class="sd-sc-main">
+                            <div class="sd-sc-value">{behindCount}</div>
+                            <div class="sd-sc-label">Team Behind on Time</div>
+                            <div class="sd-sc-sub">of {teamMemberCount} members</div>
+                        </div>
+                        <div class={behindIconClass}>👥</div>
+                    </div>
+
+                </div>
+
+                <!-- ── Main Content Grid ── -->
+                <div class="sd-content slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+
+                    <!-- Matter Health Panel -->
+                    <div class="sd-panel sd-panel--matters">
+                        <div class="sd-panel-header">
+                            <span>{matterPanelHeader}</span>
+                        </div>
+
+                        <!-- Filter bar -->
+                        <div class="sd-filter-bar">
+                            <template for:each={matterFilterBtns} for:item="fb">
+                                <button key={fb.key} type="button" class={fb.cls}
+                                        data-filter={fb.key} onclick={setMatterFilter}>
+                                    {fb.label}
+                                    <span class="sd-filter-count">{fb.count}</span>
+                                </button>
+                            </template>
+                        </div>
+
+                        <!-- Matter list -->
+                        <div class="sd-matter-list">
+                            <template if:true={hasMatterHealth}>
+                                <template for:each={matterHealth} for:item="m">
+                                    <div key={m.id} class={m.rowClass}
+                                         data-id={m.id} onclick={handleMatterClick}>
+
+                                        <div class={m.statusClass}></div>
+
+                                        <div class="sd-matter-body">
+                                            <div class="sd-matter-name">{m.name}</div>
+                                            <template if:true={m.hasTeamLabel}>
+                                                <div class="sd-matter-team">{m.teamLabel}</div>
+                                            </template>
+                                            <div class="sd-matter-meta">
+                                                <template if:true={m.hasDeadline}>
+                                                    <span class="sd-matter-deadline"
+                                                          data-urgent={m.dlUrgent}>
+                                                        ⚑ {m.dlType} · {m.dlLabel}
+                                                    </span>
+                                                </template>
+                                                <span class="sd-matter-entry">
+                                                    Last entry: {m.lastEntryLabel}
+                                                </span>
+                                                <template if:true={m.hasOverdue}>
+                                                    <span class="sd-matter-overdue">
+                                                        {m.overdueTasks} overdue task(s)
+                                                    </span>
+                                                </template>
+                                                <template if:false={m.hasOverdue}>
+                                                    <template if:true={m.openTasks}>
+                                                        <span class="sd-matter-tasks">
+                                                            {m.openTasks} open task(s)
+                                                        </span>
+                                                    </template>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <div class="sd-matter-arrow">›</div>
+                                    </div>
+                                </template>
+                            </template>
+                            <template if:false={hasMatterHealth}>
+                                <div class="sd-empty">{emptyMatterMessage}</div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Team Compliance Panel -->
+                    <div class="sd-panel sd-panel--team">
+                        <div class="sd-panel-header">
+                            <span>{teamPanelHeader}</span>
+                        </div>
+
+                        <div class="sd-team-list">
+                            <template if:true={hasTeamStats}>
+                                <template for:each={teamStats} for:item="s">
+                                    <div key={s.id} class="sd-team-row">
+
+                                        <div class={s.avatarClass}>{s.initials}</div>
+
+                                        <div class="sd-team-info">
+                                            <div class="sd-team-name">{s.name}</div>
+                                            <div class="sd-team-role">{s.role}</div>
+                                            <div class="sd-team-bar-wrap">
+                                                <div class={s.barClass} style={s.barWidth}></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="sd-team-nums">
+                                            <div class="sd-team-hours-today">
+                                                {s.hoursDisplay}h today
+                                            </div>
+                                            <div class="sd-team-hours-week">
+                                                {s.weekDisplay}h this week
+                                            </div>
+                                            <template if:true={s.overdueTasks}>
+                                                <div class="sd-team-overdue">
+                                                    {s.overdueTasks} overdue
+                                                </div>
+                                            </template>
+                                        </div>
+
+                                    </div>
+                                </template>
+                            </template>
+                            <template if:false={hasTeamStats}>
+                                <div class="sd-empty">No team members found on your matters.</div>
+                            </template>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </template>
+
+    </lightning-card>
+</template>

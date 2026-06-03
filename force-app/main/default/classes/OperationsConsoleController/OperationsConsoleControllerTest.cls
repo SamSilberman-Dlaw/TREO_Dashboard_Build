@@ -49,7 +49,7 @@ public class OperationsConsoleControllerTest {
         } catch (Exception ignored) {}
 
         Test.startTest();
-        Map<String, Object> result = OperationsConsoleController.getConsoleData();
+        Map<String, Object> result = OperationsConsoleController.getConsoleData(null);
         Test.stopTest();
 
         System.assertNotEquals(null, result, 'Should return data map');
@@ -81,7 +81,7 @@ public class OperationsConsoleControllerTest {
     static void getRecentMatters_myOnly_returnsList() {
         createMatter(UserInfo.getUserId());
         Test.startTest();
-        List<Map<String, Object>> results = OperationsConsoleController.getRecentMatters(true);
+        List<Map<String, Object>> results = OperationsConsoleController.getRecentMatters(true, null);
         Test.stopTest();
         System.assertNotEquals(null, results);
         System.assert(results.size() >= 1, 'Should return at least the matter assigned to current user');
@@ -91,7 +91,7 @@ public class OperationsConsoleControllerTest {
     static void getRecentMatters_allCases_returnsList() {
         createMatter(null);
         Test.startTest();
-        List<Map<String, Object>> results = OperationsConsoleController.getRecentMatters(false);
+        List<Map<String, Object>> results = OperationsConsoleController.getRecentMatters(false, null);
         Test.stopTest();
         System.assertNotEquals(null, results);
     }
@@ -151,7 +151,7 @@ public class OperationsConsoleControllerTest {
     static void searchMatters_noMatch_returnsEmpty() {
         Test.setFixedSearchResults(new List<Id>{});
         Test.startTest();
-        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('ZZZnomatch', false);
+        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('ZZZnomatch', false, null);
         Test.stopTest();
         System.assertEquals(0, results.size());
     }
@@ -159,7 +159,7 @@ public class OperationsConsoleControllerTest {
     @IsTest
     static void searchMatters_shortQuery_returnsEmpty() {
         Test.startTest();
-        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('a', true);
+        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('a', true, null);
         Test.stopTest();
         System.assertEquals(0, results.size(), 'Single-char query should return empty');
     }
@@ -169,7 +169,7 @@ public class OperationsConsoleControllerTest {
         NEOS_Matter__c m = createMatter(UserInfo.getUserId());
         Test.setFixedSearchResults(new List<Id>{ m.Id });
         Test.startTest();
-        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('Test', true);
+        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('Test', true, null);
         Test.stopTest();
         System.assertNotEquals(null, results);
     }
@@ -179,7 +179,7 @@ public class OperationsConsoleControllerTest {
         NEOS_Matter__c m = createMatter(null);
         Test.setFixedSearchResults(new List<Id>{ m.Id });
         Test.startTest();
-        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('Test', false);
+        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('Test', false, null);
         Test.stopTest();
         System.assertNotEquals(null, results);
     }
@@ -189,7 +189,7 @@ public class OperationsConsoleControllerTest {
         NEOS_Matter__c m = createMatter(UserInfo.getUserId());
         Test.setFixedSearchResults(new List<Id>{ UserInfo.getUserId(), m.Id });
         Test.startTest();
-        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('Test', true);
+        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('Test', true, null);
         Test.stopTest();
         System.assertNotEquals(null, results);
     }
@@ -199,7 +199,7 @@ public class OperationsConsoleControllerTest {
         NEOS_Matter__c m = createMatter(UserInfo.getUserId());
         Test.setFixedSearchResults(new List<Id>{ UserInfo.getUserId(), m.Id });
         Test.startTest();
-        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('Test', false);
+        List<Map<String, Object>> results = OperationsConsoleController.searchMatters('Test', false, null);
         Test.stopTest();
         System.assertNotEquals(null, results);
     }
