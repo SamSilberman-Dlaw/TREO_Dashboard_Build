@@ -16,7 +16,7 @@
                         <span class="sd-exec-caret">▾</span>
                     </button>
                     <template if:true={execDropdownOpen}>
-                        <div class="sd-exec-dropdown">
+                        <div class="sd-exec-dropdown" style={execDropdownStyle}>
                             <template if:true={isViewingAsOther}>
                                 <button type="button" class="sd-exec-item sd-exec-item--self"
                                         onclick={handleResetToOwn}>← My Team</button>

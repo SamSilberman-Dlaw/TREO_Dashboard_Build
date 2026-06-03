@@ -112,10 +112,8 @@
 }
 .sd-exec-caret { font-size: 0.625rem; color: #706e6b; }
 .sd-exec-dropdown {
-    position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
-    z-index: 100;
+    position: fixed;
+    z-index: 9000;
     background: #fff;
     border: 1px solid #dddbda;
     border-radius: 6px;

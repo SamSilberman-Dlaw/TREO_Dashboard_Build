@@ -31,8 +31,9 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     @track matterFilter      = 'all';
     @track matterSort        = 'status';
     @track lastRefreshLabel  = '';
-    @track execDropdownOpen  = false;
-    @track teamList          = [];
+    @track execDropdownOpen   = false;
+    @track execDropdownStyle  = '';
+    @track teamList           = [];
 
     matterCount          = 0;
     upcomingDeadlines    = 0;
@@ -389,6 +390,13 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     /* ── Handlers ── */
 
     handleExecEyeClick() {
+        if (!this.execDropdownOpen) {
+            const btn = this.template.querySelector('.sd-exec-trigger');
+            if (btn) {
+                const r = btn.getBoundingClientRect();
+                this.execDropdownStyle = `top:${r.bottom + 4}px;right:${window.innerWidth - r.right}px`;
+            }
+        }
         this.execDropdownOpen = !this.execDropdownOpen;
     }
 
