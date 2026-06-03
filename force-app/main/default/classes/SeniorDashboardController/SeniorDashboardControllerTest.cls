@@ -35,7 +35,7 @@ public class SeniorDashboardControllerTest {
         );
 
         Test.startTest();
-        Map<String, Object> result = SeniorDashboardController.getDashboardData();
+        Map<String, Object> result = SeniorDashboardController.getDashboardData(null);
         Test.stopTest();
 
         System.assertNotEquals(null, result);
@@ -50,7 +50,7 @@ public class SeniorDashboardControllerTest {
     @IsTest
     static void getDashboardData_noMatters_returnsEmpty() {
         Test.startTest();
-        Map<String, Object> result = SeniorDashboardController.getDashboardData();
+        Map<String, Object> result = SeniorDashboardController.getDashboardData(null);
         Test.stopTest();
         System.assertNotEquals(null, result);
         List<Object> health = (List<Object>) result.get('matterHealth');
@@ -74,7 +74,7 @@ public class SeniorDashboardControllerTest {
         );
 
         Test.startTest();
-        Map<String, Object> result = SeniorDashboardController.getDashboardData();
+        Map<String, Object> result = SeniorDashboardController.getDashboardData(null);
         Test.stopTest();
 
         System.assertNotEquals(null, result);
@@ -89,6 +89,32 @@ public class SeniorDashboardControllerTest {
         System.assert(chart.containsKey('stageOrder'), 'managerChart missing stageOrder');
         List<Object> chartMembers = (List<Object>) chart.get('members');
         System.assert(!chartMembers.isEmpty(), 'Chart should have team members');
+    }
+
+    @IsTest
+    static void getTeamList_withoutPermission_throws() {
+        Test.startTest();
+        Boolean threw = false;
+        try {
+            SeniorDashboardController.getTeamList();
+        } catch (AuraHandledException ex) {
+            threw = true;
+        }
+        Test.stopTest();
+        System.assert(threw, 'getTeamList should throw without View_Executive_Dashboard permission');
+    }
+
+    @IsTest
+    static void getDashboardData_execViewWithoutPermission_throws() {
+        Test.startTest();
+        Boolean threw = false;
+        try {
+            SeniorDashboardController.getDashboardData('Team Roman');
+        } catch (AuraHandledException ex) {
+            threw = true;
+        }
+        Test.stopTest();
+        System.assert(threw, 'getDashboardData with viewAsGroupName should throw without exec permission');
     }
 
     @IsTest
@@ -109,7 +135,7 @@ public class SeniorDashboardControllerTest {
         );
 
         Test.startTest();
-        Map<String, Object> result = SeniorDashboardController.getDashboardData();
+        Map<String, Object> result = SeniorDashboardController.getDashboardData(null);
         Test.stopTest();
 
         List<Object> health = (List<Object>) result.get('matterHealth');

@@ -80,6 +80,84 @@
     opacity: 0.7;
 }
 
+/* ── Exec team switcher ── */
+.sd-exec-switcher {
+    position: relative;
+}
+.sd-exec-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+}
+.sd-exec-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid #dddbda;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 0.8125rem;
+    color: #3e3e3c;
+    cursor: pointer;
+    line-height: 1;
+    white-space: nowrap;
+}
+.sd-exec-trigger:hover { background: #f3f2f2; }
+.sd-exec-label {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sd-exec-caret { font-size: 0.625rem; color: #706e6b; }
+.sd-exec-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 100;
+    background: #fff;
+    border: 1px solid #dddbda;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    min-width: 160px;
+    padding: 0.25rem 0;
+    overflow: hidden;
+}
+.sd-exec-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.45rem 0.875rem;
+    border: none;
+    background: none;
+    font-size: 0.8125rem;
+    color: #3e3e3c;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.sd-exec-item:hover { background: #f3f2f2; }
+.sd-exec-item--active { font-weight: 700; color: #0176d3; }
+.sd-exec-item--self { color: #706e6b; font-style: italic; }
+.sd-exec-divider { height: 1px; background: #e5e5e5; margin: 0.25rem 0; }
+
+/* ── Exec prompt (no team selected) ── */
+.sd-exec-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    gap: 0.75rem;
+}
+.sd-exec-prompt-icon { font-size: 2rem; opacity: 0.4; }
+.sd-exec-prompt-text {
+    font-size: 0.875rem;
+    color: #b0adab;
+    text-align: center;
+    max-width: 280px;
+}
+
 /* ── Date bar ── */
 .sd-date-bar {
     padding-bottom: 0.625rem;

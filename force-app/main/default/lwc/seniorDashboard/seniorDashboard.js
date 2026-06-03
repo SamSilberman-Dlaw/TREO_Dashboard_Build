@@ -2,6 +2,8 @@ import { LightningElement, track } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getDashboardData from '@salesforce/apex/SeniorDashboardController.getDashboardData';
+import getTeamList from '@salesforce/apex/SeniorDashboardController.getTeamList';
+import HAS_EXEC_PERM from '@salesforce/customPermission/View_Executive_Dashboard';
 
 const REFRESH_MS  = 5 * 60 * 1000;
 
@@ -29,6 +31,8 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     @track matterFilter      = 'all';
     @track matterSort        = 'status';
     @track lastRefreshLabel  = '';
+    @track execDropdownOpen  = false;
+    @track teamList          = [];
 
     matterCount          = 0;
     upcomingDeadlines    = 0;
@@ -45,9 +49,15 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     _refreshInterval     = null;
     _activeDrillMemberId = null;
     _activeDrillStage    = null;
+    _viewAsGroupName     = null;
 
     connectedCallback() {
         this._load();
+        if (HAS_EXEC_PERM) {
+            getTeamList()
+                .then(teams => { this.teamList = teams || []; })
+                .catch(() => {});
+        }
         // eslint-disable-next-line @lwc/lwc/no-async-operation
         this._refreshInterval = setInterval(() => this._silentRefresh(), REFRESH_MS);
     }
@@ -63,7 +73,7 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
 
     _load() {
         this.isLoading = true;
-        getDashboardData()
+        getDashboardData({ viewAsGroupName: this._viewAsGroupName || null })
             .then(data => this._applyData(data))
             .catch(err => {
                 this.isLoading = false;
@@ -73,14 +83,14 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     }
 
     _silentRefresh() {
-        getDashboardData()
+        getDashboardData({ viewAsGroupName: this._viewAsGroupName || null })
             .then(data => this._applyData(data))
             .catch(() => {});
     }
 
     handleRefresh() {
         this.isRefreshing = true;
-        getDashboardData()
+        getDashboardData({ viewAsGroupName: this._viewAsGroupName || null })
             .then(data => { this._applyData(data); this.isRefreshing = false; })
             .catch(() => { this.isRefreshing = false; });
     }
@@ -247,6 +257,20 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
 
     /* ── Getters ── */
 
+    get showExecEye()               { return HAS_EXEC_PERM; }
+    get isViewingAsOther()          { return !!this._viewAsGroupName; }
+    get execViewingLabel()          { return this._viewAsGroupName || 'Teams'; }
+    get showExecPrompt() {
+        return HAS_EXEC_PERM && !this._viewAsGroupName && !this.isLoading &&
+               !this.hasMatterHealth && !this.hasTeamStats;
+    }
+    get execTeamOptions() {
+        return this.teamList.map(t => ({
+            ...t,
+            itemClass: `sd-exec-item${this._viewAsGroupName === t.groupName ? ' sd-exec-item--active' : ''}`
+        }));
+    }
+
     get refreshBtnLabel()           { return this.isRefreshing ? '…' : '↻'; }
     get teamHoursTodayDisplay()     { return Number(this.teamHoursToday).toFixed(1); }
     get teamHoursWeekDisplay()      { return Number(this.teamHoursWeek).toFixed(1); }
@@ -360,6 +384,27 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     }
 
     /* ── Handlers ── */
+
+    handleExecEyeClick() {
+        this.execDropdownOpen = !this.execDropdownOpen;
+    }
+
+    closeExecDropdown() {
+        this.execDropdownOpen = false;
+    }
+
+    handleViewAsTeam(e) {
+        const group = e.currentTarget.dataset.group;
+        this._viewAsGroupName = group;
+        this.execDropdownOpen = false;
+        this._load();
+    }
+
+    handleResetToOwn() {
+        this._viewAsGroupName = null;
+        this.execDropdownOpen = false;
+        this._load();
+    }
 
     setMatterFilter(e) {
         this.matterFilter = e.currentTarget.dataset.filter;

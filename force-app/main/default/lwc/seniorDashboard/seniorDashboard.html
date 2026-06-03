@@ -2,6 +2,39 @@
     <lightning-card title="Senior Dashboard">
 
         <div slot="actions" class="sd-header-actions">
+
+            <!-- Exec team picker -->
+            <template if:true={showExecEye}>
+                <div class="sd-exec-switcher">
+                    <template if:true={execDropdownOpen}>
+                        <div class="sd-exec-overlay" onclick={closeExecDropdown}></div>
+                    </template>
+                    <button type="button" class="sd-exec-trigger" onclick={handleExecEyeClick}
+                            title="View another team's dashboard">
+                        <span>👁</span>
+                        <span class="sd-exec-label">{execViewingLabel}</span>
+                        <span class="sd-exec-caret">▾</span>
+                    </button>
+                    <template if:true={execDropdownOpen}>
+                        <div class="sd-exec-dropdown">
+                            <template if:true={isViewingAsOther}>
+                                <button type="button" class="sd-exec-item sd-exec-item--self"
+                                        onclick={handleResetToOwn}>← My Team</button>
+                                <div class="sd-exec-divider"></div>
+                            </template>
+                            <template for:each={execTeamOptions} for:item="t">
+                                <button key={t.groupName} type="button"
+                                        class={t.itemClass}
+                                        data-group={t.groupName}
+                                        onclick={handleViewAsTeam}>
+                                    {t.groupName}
+                                </button>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
             <template if:true={lastRefreshLabel}>
                 <span class="sd-refresh-label">Updated {lastRefreshLabel}</span>
             </template>
@@ -19,6 +52,13 @@
         </template>
 
         <template if:false={isLoading}>
+            <template if:true={showExecPrompt}>
+                <div class="sd-exec-prompt">
+                    <div class="sd-exec-prompt-icon">👁</div>
+                    <div class="sd-exec-prompt-text">Select a team from the picker above to view their dashboard.</div>
+                </div>
+            </template>
+            <template if:false={showExecPrompt}>
             <div class="sd-body">
 
                 <!-- ── Summary Cards ── -->
@@ -295,6 +335,7 @@
                 </template>
 
             </div>
+            </template><!-- end if:false={showExecPrompt} -->
         </template>
 
     </lightning-card>

@@ -22,7 +22,31 @@ public without sharing class SeniorDashboardController {
     };
 
     @AuraEnabled
-    public static Map<String, Object> getDashboardData() {
+    public static List<Map<String, Object>> getTeamList() {
+        if (!FeatureManagement.checkPermission('View_Executive_Dashboard')) {
+            throw new AuraHandledException('Insufficient permissions to view team list');
+        }
+        List<Map<String, Object>> teams = new List<Map<String, Object>>();
+        for (Group g : [
+            SELECT Id, Name FROM Group
+            WHERE Name IN :TEAM_GROUP_NAMES AND Type = 'Regular'
+            ORDER BY Name ASC
+        ]) {
+            String displayName = g.Name.startsWith('Team ') ? g.Name.substring(5) : g.Name;
+            teams.add(new Map<String, Object>{
+                'groupName'   => g.Name,
+                'displayName' => displayName
+            });
+        }
+        return teams;
+    }
+
+    @AuraEnabled
+    public static Map<String, Object> getDashboardData(String viewAsGroupName) {
+        if (String.isNotBlank(viewAsGroupName) &&
+            !FeatureManagement.checkPermission('View_Executive_Dashboard')) {
+            throw new AuraHandledException('Insufficient permissions to view other team dashboards');
+        }
         try {
             Id   userId    = UserInfo.getUserId();
             Date today     = Date.today();
@@ -30,23 +54,40 @@ public without sharing class SeniorDashboardController {
             Date in14Days  = today.addDays(14);
             Date in360Days = today.addDays(360);
 
-            /* ── 1. Find my team via public group ── */
+            /* ── 1. Find team via public group ── */
             String teamGroupName  = '';
             Set<Id> teamMemberIds = new Set<Id>();
 
-            List<GroupMember> myGroupMembership = [
-                SELECT GroupId, Group.Name FROM GroupMember
-                WHERE UserOrGroupId = :userId
-                  AND Group.Type = 'Regular'
-                  AND Group.Name IN :TEAM_GROUP_NAMES
-                LIMIT 1
-            ];
-            if (!myGroupMembership.isEmpty()) {
-                teamGroupName = myGroupMembership[0].Group.Name;
-                Id groupId    = myGroupMembership[0].GroupId;
-                for (GroupMember gm : [SELECT UserOrGroupId FROM GroupMember WHERE GroupId = :groupId]) {
-                    if (gm.UserOrGroupId.getSObjectType() == User.SObjectType) {
-                        teamMemberIds.add(gm.UserOrGroupId);
+            if (String.isNotBlank(viewAsGroupName)) {
+                /* Exec view: look up group directly by name */
+                List<Group> execGroups = [
+                    SELECT Id, Name FROM Group
+                    WHERE Name = :viewAsGroupName AND Type = 'Regular' LIMIT 1
+                ];
+                if (!execGroups.isEmpty()) {
+                    teamGroupName = execGroups[0].Name;
+                    for (GroupMember gm : [SELECT UserOrGroupId FROM GroupMember WHERE GroupId = :execGroups[0].Id]) {
+                        if (gm.UserOrGroupId.getSObjectType() == User.SObjectType) {
+                            teamMemberIds.add(gm.UserOrGroupId);
+                        }
+                    }
+                }
+            } else {
+                /* Normal: find current user's team group */
+                List<GroupMember> myGroupMembership = [
+                    SELECT GroupId, Group.Name FROM GroupMember
+                    WHERE UserOrGroupId = :userId
+                      AND Group.Type = 'Regular'
+                      AND Group.Name IN :TEAM_GROUP_NAMES
+                    LIMIT 1
+                ];
+                if (!myGroupMembership.isEmpty()) {
+                    teamGroupName = myGroupMembership[0].Group.Name;
+                    Id groupId    = myGroupMembership[0].GroupId;
+                    for (GroupMember gm : [SELECT UserOrGroupId FROM GroupMember WHERE GroupId = :groupId]) {
+                        if (gm.UserOrGroupId.getSObjectType() == User.SObjectType) {
+                            teamMemberIds.add(gm.UserOrGroupId);
+                        }
                     }
                 }
             }
