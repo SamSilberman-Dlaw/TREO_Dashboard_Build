@@ -46,7 +46,8 @@
                     </div>
 
                     <!-- Upcoming Deadlines (14 days) -->
-                    <div class={upcomingCardClass}>
+                    <div class={upcomingCardClass} onclick={handleUpcomingClick}
+                         title="Click to show At Risk matters">
                         <div class="sd-sc-main">
                             <div class="sd-sc-value">{upcomingDeadlines}</div>
                             <div class="sd-sc-label">Deadlines in 14 Days</div>
@@ -54,11 +55,11 @@
                         <div class="sd-sc-icon sd-sc-icon--orange">⚠</div>
                     </div>
 
-                    <!-- Team Behind on Time -->
+                    <!-- Team on Track / Behind -->
                     <div class={behindCardClass}>
                         <div class="sd-sc-main">
                             <div class="sd-sc-value">{behindCount}</div>
-                            <div class="sd-sc-label">Team Behind on Time</div>
+                            <div class="sd-sc-label">{behindCardLabel}</div>
                             <div class="sd-sc-sub">{behindCountSub}</div>
                         </div>
                         <div class={behindIconClass}>👥</div>
@@ -73,6 +74,14 @@
                     <div class="sd-panel sd-panel--matters">
                         <div class="sd-panel-header">
                             <span>{matterPanelHeader}</span>
+                            <div class="sd-sort-bar">
+                                <template for:each={matterSortBtns} for:item="sb">
+                                    <button key={sb.key} type="button" class={sb.cls}
+                                            data-sort={sb.key} onclick={handleSortClick}>
+                                        {sb.label}
+                                    </button>
+                                </template>
+                            </div>
                         </div>
 
                         <!-- Filter bar -->
@@ -103,7 +112,7 @@
                                                 </template>
                                             </div>
                                             <template if:true={m.hasTeamLabel}>
-                                                <div class="sd-matter-team">{m.teamLabel}</div>
+                                                <div class="sd-matter-team" title={m.teamLabel}>{m.teamLabel}</div>
                                             </template>
                                             <div class="sd-matter-meta">
                                                 <template if:true={m.hasDeadline}>
@@ -162,11 +171,11 @@
                                             <div class={s.hoursClass}>
                                                 {s.hoursDisplay}h today
                                             </div>
-                                            <div class="sd-team-hours-week">
+                                            <div class={s.weekClass}>
                                                 {s.weekDisplay}h this week
                                             </div>
                                             <template if:true={s.overdueTasks}>
-                                                <div class="sd-team-overdue">
+                                                <div class="sd-team-overdue" title={s.overdueTip}>
                                                     {s.overdueTasks} overdue
                                                 </div>
                                             </template>
@@ -187,8 +196,10 @@
                 <template if:true={showChartSection}>
                     <div class="sd-chart-section slds-var-p-horizontal_medium slds-var-p-bottom_medium">
                         <div class="sd-panel">
-                            <div class="sd-panel-header sd-chart-hdr">
+                            <div class="sd-panel-header">
                                 <span>{chartPanelHeader}</span>
+                            </div>
+                            <template if:true={hasChartData}>
                                 <div class="sd-chart-legend">
                                     <template for:each={chartStageLegend} for:item="s">
                                         <div key={s.stage} class="sd-chart-legend-item">
@@ -197,13 +208,18 @@
                                         </div>
                                     </template>
                                 </div>
-                            </div>
+                                <div class="sd-chart-col-hdr">
+                                    <div class="sd-chart-col-hdr-name"></div>
+                                    <div class="sd-chart-col-hdr-bar">Stage Distribution</div>
+                                    <div class="sd-chart-col-hdr-total">Total</div>
+                                </div>
+                            </template>
                             <div class="sd-chart-body">
                                 <template if:false={hasChartData}>
                                     <div class="sd-empty sd-chart-empty">No active matters for your team.</div>
                                 </template>
                                 <template if:true={hasChartData}>
-                                <template for:each={chartMembers} for:item="member">
+                                <template for:each={activeChartMembers} for:item="member">
                                     <div key={member.id} class="sd-chart-member-block">
                                         <div class="sd-chart-row">
                                             <div class="sd-chart-who">
@@ -265,6 +281,9 @@
                                             </div>
                                         </template>
                                     </div>
+                                </template>
+                                <template if:true={inactiveChartLabel}>
+                                    <div class="sd-chart-inactive-footer">{inactiveChartLabel}</div>
                                 </template>
                                 </template>
                             </div>

@@ -167,14 +167,9 @@ public without sharing class SeniorDashboardController {
                 Boolean noEntryThisWeek = (lastEntry == null || lastEntry < weekStart);
                 Boolean deadlineSoon    = (daysAway != null && daysAway <= 7);
                 Boolean deadlineCaution = (daysAway != null && daysAway <= 14);
-                String  status;
-                if (overdueTasks > 0 || deadlineSoon || noEntryThisWeek) {
-                    status = 'atrisk';
-                } else if (openTasks > 0 || deadlineCaution) {
-                    status = 'caution';
-                } else {
-                    status = 'ontrack';
-                }
+                String  status = (overdueTasks > 0 || deadlineSoon || noEntryThisWeek
+                                  || openTasks > 0 || deadlineCaution)
+                                 ? 'atrisk' : 'ontrack';
 
                 String assocName = m.Associate_Attorney__r != null ? m.Associate_Attorney__r.Name : '';
                 String lssName   = m.LSS_Paralegal__r      != null ? m.LSS_Paralegal__r.Name      : '';

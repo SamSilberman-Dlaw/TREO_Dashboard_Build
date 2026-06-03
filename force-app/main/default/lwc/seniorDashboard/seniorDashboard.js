@@ -5,8 +5,14 @@ import getDashboardData from '@salesforce/apex/SeniorDashboardController.getDash
 
 const REFRESH_MS  = 5 * 60 * 1000;
 
-const STATUS_LABELS = { atrisk: 'At Risk', caution: 'Caution', ontrack: 'On Track' };
-const FILTER_LABELS = { all: 'All', atrisk: 'At Risk', caution: 'Caution', ontrack: 'On Track' };
+const STATUS_LABELS = { atrisk: 'At Risk', ontrack: 'On Track' };
+const FILTER_LABELS = { all: 'All', atrisk: 'At Risk', ontrack: 'On Track' };
+const SORT_OPTIONS  = [
+    { key: 'status',   label: 'Status' },
+    { key: 'entry',    label: 'Last Entry' },
+    { key: 'deadline', label: 'Deadline' },
+    { key: 'name',     label: 'Name' }
+];
 
 const STAGE_COLORS = [
     '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444',
@@ -21,6 +27,7 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     @track teamStats         = [];
     @track chartMembers      = [];
     @track matterFilter      = 'all';
+    @track matterSort        = 'status';
     @track lastRefreshLabel  = '';
 
     matterCount          = 0;
@@ -107,19 +114,27 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             const dlLabel   = daysAway == null ? '' : daysAway === 0 ? 'Today' : daysAway === 1 ? '1 day' : `${daysAway} days`;
             const dlUrgent  = daysAway != null && daysAway <= 7;
             const dlCaution = daysAway != null && daysAway <= 14;
-            const hasEntry    = !!m.lastEntryDate;
-            const lastEntry   = hasEntry ? this._fmtDate(m.lastEntryDate) : 'No entries';
+            const hasEntry     = !!m.lastEntryDate;
+            const stale        = hasEntry && m.noEntryThisWeek;
+            const lastEntry    = hasEntry
+                ? (stale ? `${this._fmtDate(m.lastEntryDate)} · not this week` : this._fmtDate(m.lastEntryDate))
+                : 'No entries';
+            const lastEntryCls = !hasEntry ? 'sd-matter-entry sd-matter-entry--never'
+                               : stale     ? 'sd-matter-entry sd-matter-entry--stale'
+                               :             'sd-matter-entry';
+            const resolvedStatus = (m.status === 'caution') ? 'atrisk' : m.status;
             return {
                 ...m,
-                statusLabel:     STATUS_LABELS[m.status] || m.status,
-                statusClass:     `sd-matter-status sd-matter-status--${m.status}`,
-                rowClass:        `sd-matter-row sd-matter-row--${m.status}`,
+                status:          resolvedStatus,
+                statusLabel:     STATUS_LABELS[resolvedStatus] || resolvedStatus,
+                statusClass:     `sd-matter-status sd-matter-status--${resolvedStatus}`,
+                rowClass:        `sd-matter-row sd-matter-row--${resolvedStatus}`,
                 dlLabel,
                 dlType:          dl ? dl.eventType : '',
                 dlUrgent,
                 dlCaution,
                 lastEntryLabel:  lastEntry,
-                lastEntryClass:  `sd-matter-entry${hasEntry ? '' : ' sd-matter-entry--never'}`,
+                lastEntryClass:  lastEntryCls,
                 hasDeadline:     !!dl,
                 hasOverdue:      m.overdueTasks > 0,
                 hasTeamLabel:    !!(m.associateName || m.lssName),
@@ -136,21 +151,52 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             const parts  = String(s.name || '').split(' ');
             const initials = (String(s.firstName || parts[0] || '').slice(0, 1)
                 + (parts.length > 1 ? parts[parts.length - 1].slice(0, 1) : '')).toUpperCase();
+            const weekHrs = Number(s.hoursWeek) || 0;
+            const overdueTasks = Number(s.overdueTasks) || 0;
             return {
                 ...s,
-                hoursDisplay: hrs.toFixed(1),
-                weekDisplay:  (Number(s.hoursWeek) || 0).toFixed(1),
-                hoursClass:   `sd-team-hours-today sd-team-hours-today--${status}`,
-                avatarClass:  `sd-team-avatar sd-team-avatar--${status}`,
+                hoursDisplay:  hrs.toFixed(1),
+                weekDisplay:   weekHrs.toFixed(1),
+                hoursClass:    `sd-team-hours-today sd-team-hours-today--${status}`,
+                weekClass:     `sd-team-hours-week${weekHrs > 0 ? ' sd-team-hours-week--active' : ''}`,
+                avatarClass:   'sd-team-avatar',
+                overdueTip:    `${overdueTasks} overdue task${overdueTasks !== 1 ? 's' : ''} on their matters`,
                 initials
             };
         });
     }
 
     _applyMatterFilter() {
-        this.matterHealth = this.matterFilter === 'all'
-            ? this._rawMatterHealth
+        const filtered = this.matterFilter === 'all'
+            ? [...this._rawMatterHealth]
             : this._rawMatterHealth.filter(m => m.status === this.matterFilter);
+        this.matterHealth = this._sortMatters(filtered);
+    }
+
+    _sortMatters(list) {
+        const STATUS_ORDER = { atrisk: 0, ontrack: 1 };
+        if (this.matterSort === 'status') {
+            return list.slice().sort((a, b) =>
+                (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9) ||
+                String(a.name).localeCompare(String(b.name))
+            );
+        }
+        if (this.matterSort === 'entry') {
+            return list.slice().sort((a, b) => {
+                if (!a.lastEntryDate && !b.lastEntryDate) return 0;
+                if (!a.lastEntryDate) return -1;
+                if (!b.lastEntryDate) return 1;
+                return a.lastEntryDate < b.lastEntryDate ? -1 : 1;
+            });
+        }
+        if (this.matterSort === 'deadline') {
+            return list.slice().sort((a, b) => {
+                const da = a.nextDeadline ? a.nextDeadline.daysAway : 9999;
+                const db = b.nextDeadline ? b.nextDeadline.daysAway : 9999;
+                return da - db;
+            });
+        }
+        return list.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
     }
 
     _buildChartRows() {
@@ -197,6 +243,11 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     get hasTeamStats()              { return this.teamStats.length > 0; }
     get showChartSection()          { return this.teamStats.length > 0; }
     get hasChartData()              { return this.chartMembers.some(m => m.hasSegments); }
+    get activeChartMembers()        { return this.chartMembers.filter(m => m.hasSegments); }
+    get inactiveChartLabel() {
+        const n = this.chartMembers.filter(m => !m.hasSegments).length;
+        return n > 0 ? `${n} member${n !== 1 ? 's' : ''} with no active matters` : '';
+    }
     get todayLabel()                { return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); }
 
     get teamHoursTodayCardClass() {
@@ -215,6 +266,13 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
         return `of ${this.teamMemberCount} members`;
     }
 
+    get behindCardLabel() {
+        return this.behindCount === 0 ? 'Team On Track' : 'Team Behind on Time';
+    }
+    get upcomingCardClickable() {
+        return this.upcomingDeadlines > 0;
+    }
+
     get behindCardClass() {
         return this.behindCount > 0 ? 'sd-sc sd-sc--red' : 'sd-sc sd-sc--green';
     }
@@ -222,16 +280,32 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
         return this.behindCount > 0 ? 'sd-sc-icon sd-sc-icon--red' : 'sd-sc-icon sd-sc-icon--green';
     }
     get upcomingCardClass() {
-        return this.upcomingDeadlines > 0 ? 'sd-sc sd-sc--orange' : 'sd-sc sd-sc--gray';
+        const color = this.upcomingDeadlines > 0 ? 'sd-sc--orange' : 'sd-sc--gray';
+        const ptr   = this.upcomingDeadlines > 0 ? ' sd-sc--clickable' : '';
+        return `sd-sc ${color}${ptr}`;
     }
 
     get matterFilterBtns() {
-        return ['all', 'atrisk', 'caution', 'ontrack'].map(f => ({
-            key:    f,
-            label:  FILTER_LABELS[f],
-            cls:    'sd-filter-btn' + (this.matterFilter === f ? ' sd-filter-btn--active' : ''),
-            count:  f === 'all' ? this._rawMatterHealth.length
-                                : this._rawMatterHealth.filter(m => m.status === f).length
+        return ['all', 'atrisk', 'ontrack'].map(f => {
+            const active = this.matterFilter === f;
+            const cls = active
+                ? (f === 'atrisk' ? 'sd-filter-btn sd-filter-btn--atrisk-active'
+                                  : 'sd-filter-btn sd-filter-btn--active')
+                : 'sd-filter-btn';
+            return {
+                key:   f,
+                label: FILTER_LABELS[f],
+                cls,
+                count: f === 'all' ? this._rawMatterHealth.length
+                                   : this._rawMatterHealth.filter(m => m.status === f).length
+            };
+        });
+    }
+
+    get matterSortBtns() {
+        return SORT_OPTIONS.map(o => ({
+            ...o,
+            cls: `sd-sort-btn${this.matterSort === o.key ? ' sd-sort-btn--active' : ''}`
         }));
     }
 
@@ -274,6 +348,17 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
 
     setMatterFilter(e) {
         this.matterFilter = e.currentTarget.dataset.filter;
+        this._applyMatterFilter();
+    }
+
+    handleSortClick(e) {
+        this.matterSort = e.currentTarget.dataset.sort;
+        this._applyMatterFilter();
+    }
+
+    handleUpcomingClick() {
+        if (!this.upcomingDeadlines) return;
+        this.matterFilter = 'atrisk';
         this._applyMatterFilter();
     }
 
