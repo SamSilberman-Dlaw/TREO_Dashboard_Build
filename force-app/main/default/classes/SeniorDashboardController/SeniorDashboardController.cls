@@ -205,10 +205,10 @@ public without sharing class SeniorDashboardController {
                 Integer daysAway = dl != null ? (Integer) dl.get('daysAway') : null;
                 if (daysAway != null && daysAway <= 14) upcomingDeadlineCount++;
 
-                Boolean noEntryThisWeek = (lastEntry == null || lastEntry < weekStart);
+                Boolean noRecentEntry   = (lastEntry == null || lastEntry < today.addDays(-30));
                 Boolean deadlineSoon    = (daysAway != null && daysAway <= 7);
                 Boolean deadlineCaution = (daysAway != null && daysAway <= 14);
-                String  status = (overdueTasks > 0 || deadlineSoon || noEntryThisWeek
+                String  status = (overdueTasks > 0 || deadlineSoon || noRecentEntry
                                   || openTasks > 0 || deadlineCaution)
                                  ? 'atrisk' : 'ontrack';
 
@@ -223,7 +223,7 @@ public without sharing class SeniorDashboardController {
                     'associateName'  => assocName,
                     'lssName'        => lssName,
                     'lastEntryDate'  => lastEntry != null ? String.valueOf(lastEntry) : '',
-                    'noEntryThisWeek'=> noEntryThisWeek,
+                    'noRecentEntry'  => noRecentEntry,
                     'openTasks'      => openTasks,
                     'overdueTasks'   => overdueTasks,
                     'nextDeadline'   => dl,

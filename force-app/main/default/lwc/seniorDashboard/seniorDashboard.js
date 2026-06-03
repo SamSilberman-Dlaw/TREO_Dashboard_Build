@@ -136,9 +136,9 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             const dlUrgent  = daysAway != null && daysAway <= 7;
             const dlCaution = daysAway != null && daysAway <= 14;
             const hasEntry     = !!m.lastEntryDate;
-            const stale        = hasEntry && m.noEntryThisWeek;
+            const stale        = hasEntry && m.noRecentEntry;
             const lastEntry    = hasEntry
-                ? (stale ? `${this._fmtDate(m.lastEntryDate)} · not this week` : this._fmtDate(m.lastEntryDate))
+                ? (stale ? `${this._fmtDate(m.lastEntryDate)} · 30+ days` : this._fmtDate(m.lastEntryDate))
                 : 'No entries';
             const lastEntryCls = !hasEntry ? 'sd-matter-entry sd-matter-entry--never'
                                : stale     ? 'sd-matter-entry sd-matter-entry--stale'

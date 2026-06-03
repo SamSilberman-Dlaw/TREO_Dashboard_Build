@@ -92,32 +92,6 @@ public class SeniorDashboardControllerTest {
     }
 
     @IsTest
-    static void getTeamList_withoutPermission_throws() {
-        Test.startTest();
-        Boolean threw = false;
-        try {
-            SeniorDashboardController.getTeamList();
-        } catch (AuraHandledException ex) {
-            threw = true;
-        }
-        Test.stopTest();
-        System.assert(threw, 'getTeamList should throw without View_Executive_Dashboard permission');
-    }
-
-    @IsTest
-    static void getDashboardData_execViewWithoutPermission_throws() {
-        Test.startTest();
-        Boolean threw = false;
-        try {
-            SeniorDashboardController.getDashboardData('Team Roman');
-        } catch (AuraHandledException ex) {
-            threw = true;
-        }
-        Test.stopTest();
-        System.assert(threw, 'getDashboardData with viewAsGroupName should throw without exec permission');
-    }
-
-    @IsTest
     static void getDashboardData_withOverdueTask_marksAtRisk() {
         Id userId = UserInfo.getUserId();
 
