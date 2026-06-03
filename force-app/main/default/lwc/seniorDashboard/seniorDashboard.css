@@ -58,7 +58,6 @@
     color: #0176d3;
     line-height: 1.1;
 }
-.sd-sc-value--indigo { color: #5c4ee5; }
 .sd-sc--red .sd-sc-value   { color: #ba0517; }
 .sd-sc--green .sd-sc-value { color: #2e844a; }
 .sd-sc--orange .sd-sc-value{ color: #c25900; }
@@ -79,6 +78,18 @@
     flex-shrink: 0;
     margin-left: 0.5rem;
     opacity: 0.7;
+}
+
+/* ── Date bar ── */
+.sd-date-bar {
+    padding-bottom: 0.625rem;
+}
+.sd-date-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #b0adab;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
 
 /* ── Content Grid ── */
@@ -195,23 +206,15 @@
     gap: 0.625rem;
     padding: 0.6rem 0.875rem;
     border-bottom: 1px solid #f3f2f2;
+    border-left: 3px solid transparent;
     cursor: pointer;
     transition: background 0.1s;
 }
 .sd-matter-row:hover { background: #f8f8f8; }
 .sd-matter-row:last-child { border-bottom: none; }
+.sd-matter-row--atrisk  { border-left-color: #ba0517; padding-left: calc(0.875rem - 3px); }
 .sd-matter-row--atrisk:hover  { background: #fff8f8; }
-
-.sd-matter-status {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    margin-top: 2px;
-    align-self: flex-start;
-}
-.sd-matter-status--atrisk  { background: #ba0517; }
-.sd-matter-status--ontrack { background: #2e844a; }
+.sd-matter-row--ontrack { border-left-color: #2e844a; padding-left: calc(0.875rem - 3px); }
 
 .sd-matter-body { flex: 1; min-width: 0; }
 .sd-matter-name-row {
@@ -306,8 +309,11 @@
     gap: 0.75rem;
     padding: 0.625rem 0.875rem;
     border-bottom: 1px solid #f3f2f2;
+    border-left: 3px solid transparent;
 }
 .sd-team-row:last-child { border-bottom: none; }
+.sd-team-row--behind { border-left-color: #ba0517; padding-left: calc(0.875rem - 3px); }
+.sd-team-row--break  { border-top: 2px solid #e8e8e8; }
 
 .sd-team-avatar {
     width: 36px;
@@ -336,6 +342,9 @@
     font-size: 0.6875rem;
     color: #b0adab;
     margin-top: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .sd-team-nums {
     text-align: right;
@@ -393,7 +402,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem 0.875rem;
-    padding: 0 0.875rem 0.625rem;
+    padding: 0.5rem 0.875rem 0.625rem;
     border-bottom: 1px solid #f3f2f2;
 }
 .sd-chart-col-hdr {
@@ -403,7 +412,7 @@
     border-bottom: 1px solid #f3f2f2;
     background: #fafaf9;
 }
-.sd-chart-col-hdr-name  { width: 100px; flex-shrink: 0; }
+.sd-chart-col-hdr-name  { width: 110px; flex-shrink: 0; font-size: 0.6875rem; color: #b0adab; }
 .sd-chart-col-hdr-bar   { flex: 1; font-size: 0.6875rem; color: #b0adab; }
 .sd-chart-col-hdr-total { width: 36px; text-align: right; font-size: 0.6875rem; color: #b0adab; flex-shrink: 0; }
 .sd-chart-inactive-footer {
@@ -516,7 +525,7 @@
     font-style: italic;
 }
 .sd-chart-total-col {
-    width: 28px;
+    width: 36px;
     text-align: right;
     flex-shrink: 0;
 }

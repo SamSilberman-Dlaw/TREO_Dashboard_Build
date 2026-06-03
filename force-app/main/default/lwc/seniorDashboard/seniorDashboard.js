@@ -98,7 +98,18 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
         this.teamGroupName      = data.teamGroupName      || '';
 
         this._rawMatterHealth = this._processMatterHealth(data.matterHealth || []);
-        this.teamStats        = this._processTeamStats(data.teamStats       || []);
+        const rawStats = this._processTeamStats(data.teamStats || []);
+        // mark section break at the first transition from 0h → has-hours
+        let breakAdded = false;
+        this.teamStats = rawStats.map((s, i) => {
+            const isBehind   = Number(s.hoursToday) === 0;
+            const isBreak    = !breakAdded && i > 0 && Number(rawStats[i-1].hoursToday) === 0 && !isBehind;
+            if (isBreak) breakAdded = true;
+            return {
+                ...s,
+                rowClass: `sd-team-row${isBehind ? ' sd-team-row--behind' : ''}${isBreak ? ' sd-team-row--break' : ''}`
+            };
+        });
         this._applyMatterFilter();
 
         const chart = data.managerChart || {};
@@ -310,12 +321,16 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     }
 
     get matterPanelHeader() {
-        const n     = this.matterHealth.length;
-        const total = this._rawMatterHealth.length;
-        const name  = this.teamGroupName || 'Team';
-        return this.matterFilter === 'all'
-            ? `${name} Matters (${total})`
-            : `${name} Matters — ${FILTER_LABELS[this.matterFilter]} (${n} of ${total})`;
+        const n      = this.matterHealth.length;
+        const total  = this._rawMatterHealth.length;
+        const atRisk = this._rawMatterHealth.filter(m => m.status === 'atrisk').length;
+        const name   = this.teamGroupName || 'Team';
+        if (this.matterFilter !== 'all') {
+            return `${name} Matters — ${FILTER_LABELS[this.matterFilter]} (${n} of ${total})`;
+        }
+        return atRisk > 0
+            ? `${name} Matters (${total}) · ${atRisk} at risk`
+            : `${name} Matters (${total})`;
     }
 
     get teamPanelHeader() {

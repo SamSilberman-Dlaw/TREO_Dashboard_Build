@@ -67,6 +67,11 @@
 
                 </div>
 
+                <!-- ── Date Context ── -->
+                <div class="sd-date-bar slds-var-p-horizontal_medium">
+                    <span class="sd-date-label">{todayLabel}</span>
+                </div>
+
                 <!-- ── Main Content Grid ── -->
                 <div class="sd-content slds-var-p-horizontal_medium slds-var-p-bottom_medium">
 
@@ -101,8 +106,6 @@
                                 <template for:each={matterHealth} for:item="m">
                                     <div key={m.id} class={m.rowClass}
                                          data-id={m.id} onclick={handleMatterClick}>
-
-                                        <div class={m.statusClass}></div>
 
                                         <div class="sd-matter-body">
                                             <div class="sd-matter-name-row">
@@ -158,7 +161,7 @@
                         <div class="sd-team-list">
                             <template if:true={hasTeamStats}>
                                 <template for:each={teamStats} for:item="s">
-                                    <div key={s.id} class="sd-team-row">
+                                    <div key={s.id} class={s.rowClass}>
 
                                         <div class={s.avatarClass}>{s.initials}</div>
 
@@ -209,7 +212,7 @@
                                     </template>
                                 </div>
                                 <div class="sd-chart-col-hdr">
-                                    <div class="sd-chart-col-hdr-name"></div>
+                                    <div class="sd-chart-col-hdr-name">Member</div>
                                     <div class="sd-chart-col-hdr-bar">Stage Distribution</div>
                                     <div class="sd-chart-col-hdr-total">Total</div>
                                 </div>
