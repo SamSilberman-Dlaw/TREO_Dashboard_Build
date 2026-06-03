@@ -120,6 +120,7 @@ public without sharing class SeniorDashboardController {
                     WHERE (Senior_Attorney__c   IN :teamMemberIds
                         OR Associate_Attorney__c IN :teamMemberIds
                         OR LSS_Paralegal__c       IN :teamMemberIds)
+                      AND (Stage__c = null OR Stage__c NOT IN :CLOSED_STAGES)
                     ORDER BY Name ASC
                     LIMIT 500
                 ];
