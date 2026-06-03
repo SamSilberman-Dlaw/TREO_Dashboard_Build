@@ -9,12 +9,18 @@ const DAILY_GOAL  = 8;
 const STATUS_LABELS = { atrisk: 'At Risk', caution: 'Needs Attention', ontrack: 'On Track' };
 const FILTER_LABELS = { all: 'All', atrisk: 'At Risk', caution: 'Attention', ontrack: 'On Track' };
 
+const STAGE_COLORS = [
+    '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444',
+    '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
+];
+
 export default class SeniorDashboard extends NavigationMixin(LightningElement) {
 
     @track isLoading         = false;
     @track isRefreshing      = false;
     @track matterHealth      = [];
     @track teamStats         = [];
+    @track chartMembers      = [];
     @track matterFilter      = 'all';
     @track lastRefreshLabel  = '';
 
@@ -22,13 +28,17 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     upcomingDeadlines    = 0;
     behindCount          = 0;
     teamMemberCount      = 0;
-    myHoursToday         = 0;
-    myHoursWeek          = 0;
+    teamHoursToday       = 0;
+    teamHoursWeek        = 0;
     firstName            = '';
     teamGroupName        = '';
+    chartStageOrder      = [];
 
-    _rawMatterHealth = [];
-    _refreshInterval = null;
+    _rawMatterHealth     = [];
+    _rawChartMembers     = [];
+    _refreshInterval     = null;
+    _activeDrillMemberId = null;
+    _activeDrillStage    = null;
 
     connectedCallback() {
         this._load();
@@ -76,14 +86,19 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
         this.upcomingDeadlines  = data.upcomingDeadlineCount || 0;
         this.behindCount        = data.behindCount        || 0;
         this.teamMemberCount    = data.teamMemberCount    || 0;
-        this.myHoursToday       = data.myHoursToday       || 0;
-        this.myHoursWeek        = data.myHoursWeek        || 0;
+        this.teamHoursToday     = data.teamHoursToday     || 0;
+        this.teamHoursWeek      = data.teamHoursWeek      || 0;
         this.firstName          = data.firstName          || '';
         this.teamGroupName      = data.teamGroupName      || '';
 
         this._rawMatterHealth = this._processMatterHealth(data.matterHealth || []);
         this.teamStats        = this._processTeamStats(data.teamStats       || []);
         this._applyMatterFilter();
+
+        const chart = data.managerChart || {};
+        this.chartStageOrder  = chart.stageOrder || [];
+        this._rawChartMembers = chart.members    || [];
+        this._buildChartRows();
     }
 
     _processMatterHealth(rows) {
@@ -93,9 +108,7 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             const dlLabel   = daysAway == null ? '' : daysAway === 0 ? 'Today' : daysAway === 1 ? '1 day' : `${daysAway} days`;
             const dlUrgent  = daysAway != null && daysAway <= 7;
             const dlCaution = daysAway != null && daysAway <= 14;
-            const lastEntry = m.lastEntryDate
-                ? this._fmtDate(m.lastEntryDate)
-                : 'Never';
+            const lastEntry = m.lastEntryDate ? this._fmtDate(m.lastEntryDate) : 'Never';
             return {
                 ...m,
                 statusLabel:    STATUS_LABELS[m.status] || m.status,
@@ -118,7 +131,7 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
         return rows.map(s => {
             const hrs    = Number(s.hoursToday) || 0;
             const pct    = Math.min(Math.round(hrs / DAILY_GOAL * 100), 100);
-            const status = hrs >= DAILY_GOAL ? 'ontrack' : hrs >= 4 ? 'caution' : 'behind';
+            const status = hrs > 0 ? 'ontrack' : 'behind';
             const initials = String(s.firstName || s.name || '').slice(0, 2).toUpperCase();
             return {
                 ...s,
@@ -139,13 +152,48 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             : this._rawMatterHealth.filter(m => m.status === this.matterFilter);
     }
 
+    _buildChartRows() {
+        const stageOrder = this.chartStageOrder;
+        this.chartMembers = this._rawChartMembers.map(m => {
+            const total    = m.total || 0;
+            const segments = (m.segments || []).map(seg => {
+                const si      = stageOrder.indexOf(seg.stage);
+                const color   = STAGE_COLORS[(si >= 0 ? si : 0) % STAGE_COLORS.length];
+                const pct     = total > 0 ? (seg.count / total) * 100 : 0;
+                const isActive = this._activeDrillMemberId === m.id && this._activeDrillStage === seg.stage;
+                return {
+                    ...seg,
+                    style:     `width:${pct.toFixed(1)}%;background-color:${color}`,
+                    btnClass:  `sd-chart-seg${isActive ? ' sd-chart-seg--active' : ''}`,
+                    tooltip:   `${seg.stage}: ${seg.count} matter${seg.count !== 1 ? 's' : ''}`,
+                    showLabel: pct >= 10
+                };
+            });
+
+            const showDrill    = this._activeDrillMemberId === m.id && !!this._activeDrillStage;
+            const activeSeg    = showDrill ? (m.segments || []).find(s => s.stage === this._activeDrillStage) : null;
+            const drillMatters = activeSeg ? (activeSeg.matters || []) : [];
+
+            return {
+                ...m,
+                segments,
+                hasSegments:  segments.length > 0,
+                showDrill,
+                drillTitle:   showDrill ? `${m.firstName} — ${this._activeDrillStage} (${drillMatters.length})` : '',
+                drillStage:   this._activeDrillStage || '',
+                drillMatters
+            };
+        });
+    }
+
     /* ── Getters ── */
 
-    get refreshBtnLabel()     { return this.isRefreshing ? '…' : '↻'; }
-    get myHoursTodayDisplay() { return Number(this.myHoursToday).toFixed(1); }
-    get myHoursWeekDisplay()  { return Number(this.myHoursWeek).toFixed(1); }
+    get refreshBtnLabel()         { return this.isRefreshing ? '…' : '↻'; }
+    get teamHoursTodayDisplay()   { return Number(this.teamHoursToday).toFixed(1); }
+    get teamHoursWeekDisplay()    { return Number(this.teamHoursWeek).toFixed(1); }
     get hasMatterHealth()     { return this.matterHealth.length > 0; }
     get hasTeamStats()        { return this.teamStats.length > 0; }
+    get hasChartData()        { return this.chartMembers.some(m => m.hasSegments); }
     get todayLabel()          { return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }); }
 
     get behindCardClass() {
@@ -169,11 +217,12 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     }
 
     get matterPanelHeader() {
-        const n = this.matterHealth.length;
+        const n     = this.matterHealth.length;
         const total = this._rawMatterHealth.length;
+        const name  = this.teamGroupName || 'Team';
         return this.matterFilter === 'all'
-            ? `My Matters (${total})`
-            : `My Matters — ${FILTER_LABELS[this.matterFilter]} (${n} of ${total})`;
+            ? `${name} Matters (${total})`
+            : `${name} Matters — ${FILTER_LABELS[this.matterFilter]} (${n} of ${total})`;
     }
 
     get teamPanelHeader() {
@@ -182,8 +231,21 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
         return `${name} — Today${n > 0 ? ` (${n})` : ''}`;
     }
 
+    get chartPanelHeader() {
+        const name  = this.teamGroupName || 'My Team';
+        const total = this.chartMembers.reduce((s, m) => s + (m.total || 0), 0);
+        return `${name} — Matters by Stage · ${total} active`;
+    }
+
+    get chartStageLegend() {
+        return this.chartStageOrder.map((stage, i) => ({
+            stage,
+            dotStyle: `background-color:${STAGE_COLORS[i % STAGE_COLORS.length]}`
+        }));
+    }
+
     get emptyMatterMessage() {
-        if (this._rawMatterHealth.length === 0) return 'No matters assigned to you as Senior Attorney.';
+        if (this._rawMatterHealth.length === 0) return 'No matters found for your team.';
         return `No ${FILTER_LABELS[this.matterFilter].toLowerCase()} matters.`;
     }
 
@@ -201,6 +263,19 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             type: 'standard__recordPage',
             attributes: { recordId: id, actionName: 'view' }
         });
+    }
+
+    handleChartSegmentClick(e) {
+        const memberId = e.currentTarget.dataset.memberId;
+        const stage    = e.currentTarget.dataset.stage;
+        if (this._activeDrillMemberId === memberId && this._activeDrillStage === stage) {
+            this._activeDrillMemberId = null;
+            this._activeDrillStage    = null;
+        } else {
+            this._activeDrillMemberId = memberId;
+            this._activeDrillStage    = stage;
+        }
+        this._buildChartRows();
     }
 
     /* ── Helpers ── */

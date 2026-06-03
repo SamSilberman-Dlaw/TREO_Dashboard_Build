@@ -24,20 +24,20 @@
                 <!-- ── Summary Cards ── -->
                 <div class="sd-summary-row slds-var-p-horizontal_medium slds-var-p-bottom_medium">
 
-                    <!-- My Hours Today -->
+                    <!-- Team Hours Today -->
                     <div class="sd-sc sd-sc--blue">
                         <div class="sd-sc-main">
-                            <div class="sd-sc-value">{myHoursTodayDisplay}h</div>
-                            <div class="sd-sc-label">My Hours Today</div>
+                            <div class="sd-sc-value">{teamHoursTodayDisplay}h</div>
+                            <div class="sd-sc-label">Team Hours Today</div>
                         </div>
                         <div class="sd-sc-icon sd-sc-icon--blue">⏱</div>
                     </div>
 
-                    <!-- My Hours This Week -->
+                    <!-- Team Hours This Week -->
                     <div class="sd-sc sd-sc--indigo">
                         <div class="sd-sc-main">
-                            <div class="sd-sc-value sd-sc-value--indigo">{myHoursWeekDisplay}h</div>
-                            <div class="sd-sc-label">My Hours This Week</div>
+                            <div class="sd-sc-value sd-sc-value--indigo">{teamHoursWeekDisplay}h</div>
+                            <div class="sd-sc-label">Team Hours This Week</div>
                         </div>
                         <div class="sd-sc-icon sd-sc-icon--indigo">📅</div>
                     </div>
@@ -177,6 +177,90 @@
                     </div>
 
                 </div>
+
+                <!-- ── Manager Chart ── -->
+                <template if:true={hasChartData}>
+                    <div class="sd-chart-section slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+                        <div class="sd-panel">
+                            <div class="sd-panel-header sd-chart-hdr">
+                                <span>{chartPanelHeader}</span>
+                                <div class="sd-chart-legend">
+                                    <template for:each={chartStageLegend} for:item="s">
+                                        <div key={s.stage} class="sd-chart-legend-item">
+                                            <span class="sd-chart-legend-dot" style={s.dotStyle}></span>
+                                            <span class="sd-chart-legend-label">{s.stage}</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="sd-chart-body">
+                                <template for:each={chartMembers} for:item="member">
+                                    <div key={member.id} class="sd-chart-member-block">
+                                        <div class="sd-chart-row">
+                                            <div class="sd-chart-who">
+                                                <div class="sd-chart-avatar">{member.initials}</div>
+                                                <span class="sd-chart-name">{member.firstName}</span>
+                                            </div>
+                                            <div class="sd-chart-bar-area">
+                                                <template if:true={member.hasSegments}>
+                                                    <div class="sd-chart-bar">
+                                                        <template for:each={member.segments} for:item="seg">
+                                                            <button key={seg.stage}
+                                                                    class={seg.btnClass}
+                                                                    style={seg.style}
+                                                                    data-member-id={member.id}
+                                                                    data-stage={seg.stage}
+                                                                    onclick={handleChartSegmentClick}
+                                                                    title={seg.tooltip}>
+                                                                <template if:true={seg.showLabel}>
+                                                                    <span class="sd-chart-seg-count">{seg.count}</span>
+                                                                </template>
+                                                            </button>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                                <template if:false={member.hasSegments}>
+                                                    <span class="sd-chart-no-matters">No active matters</span>
+                                                </template>
+                                            </div>
+                                            <div class="sd-chart-total-col">
+                                                <template if:true={member.hasSegments}>
+                                                    <span class="sd-chart-total">{member.total}</span>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        <template if:true={member.showDrill}>
+                                            <div class="sd-chart-drill">
+                                                <div class="sd-chart-drill-hdr">
+                                                    <span class="sd-chart-drill-title">{member.drillTitle}</span>
+                                                    <button class="sd-chart-drill-close"
+                                                            data-member-id={member.id}
+                                                            data-stage={member.drillStage}
+                                                            onclick={handleChartSegmentClick}>✕</button>
+                                                </div>
+                                                <div class="sd-chart-drill-list">
+                                                    <template for:each={member.drillMatters} for:item="m">
+                                                        <div key={m.id} class="sd-chart-drill-row"
+                                                             data-id={m.id} onclick={handleMatterClick}>
+                                                            <span class="sd-chart-drill-name">{m.name}</span>
+                                                            <template if:true={m.recordType}>
+                                                                <span class="sd-chart-drill-rt">{m.recordType}</span>
+                                                            </template>
+                                                            <template if:true={m.jurisdiction}>
+                                                                <span class="sd-chart-drill-jx">{m.jurisdiction}</span>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
             </div>
         </template>
 

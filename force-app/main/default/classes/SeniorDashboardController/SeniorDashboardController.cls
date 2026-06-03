@@ -12,6 +12,15 @@ public without sharing class SeniorDashboardController {
         'Team Alvin', 'Team Adam'
     };
 
+    private static final List<String> STAGE_ORDER = new List<String>{
+        'Signed/Unfiled', 'Filed', 'Service', 'Discovery', 'Pre-Trial',
+        'Trial Prep', 'Trial', 'Settlement', 'Post-Trial', 'Appeal'
+    };
+
+    private static final Set<String> CLOSED_STAGES = new Set<String>{
+        'File Closed', 'Closed', 'Dismissed', 'Archived'
+    };
+
     @AuraEnabled
     public static Map<String, Object> getDashboardData() {
         try {
@@ -21,25 +30,65 @@ public without sharing class SeniorDashboardController {
             Date in14Days  = today.addDays(14);
             Date in360Days = today.addDays(360);
 
-            /* ── 1. My matters (Senior Attorney) ── */
-            List<NEOS_Matter__c> matters = [
-                SELECT Id, Name, CourtJurisdiction__c, RecordType.Name,
-                       Associate_Attorney__c, Associate_Attorney__r.Name,
-                       Associate_Attorney__r.FirstName,
-                       LSS_Paralegal__c, LSS_Paralegal__r.Name,
-                       LSS_Paralegal__r.FirstName
-                FROM NEOS_Matter__c
-                WHERE Senior_Attorney__c = :userId
-                ORDER BY Name ASC
-                LIMIT 200
+            /* ── 1. Find my team via public group ── */
+            String teamGroupName  = '';
+            Set<Id> teamMemberIds = new Set<Id>();
+
+            List<GroupMember> myGroupMembership = [
+                SELECT GroupId, Group.Name FROM GroupMember
+                WHERE UserOrGroupId = :userId
+                  AND Group.Type = 'Regular'
+                  AND Group.Name IN :TEAM_GROUP_NAMES
+                LIMIT 1
             ];
+            if (!myGroupMembership.isEmpty()) {
+                teamGroupName = myGroupMembership[0].Group.Name;
+                Id groupId    = myGroupMembership[0].GroupId;
+                for (GroupMember gm : [SELECT UserOrGroupId FROM GroupMember WHERE GroupId = :groupId]) {
+                    if (gm.UserOrGroupId.getSObjectType() == User.SObjectType) {
+                        teamMemberIds.add(gm.UserOrGroupId);
+                    }
+                }
+            }
+
+            /* ── 2. Team member details ── */
+            Map<Id, User> teamUsers     = new Map<Id, User>();
+            List<User>    teamUsersList = new List<User>();
+            if (!teamMemberIds.isEmpty()) {
+                for (User u : [
+                    SELECT Id, Name, FirstName, Title, UserRole.Name
+                    FROM User
+                    WHERE Id IN :teamMemberIds AND IsActive = true
+                    ORDER BY Name ASC
+                ]) {
+                    teamUsers.put(u.Id, u);
+                    teamUsersList.add(u);
+                }
+            }
+
+            /* ── 3. Team matters ── */
+            List<NEOS_Matter__c> matters = teamMemberIds.isEmpty()
+                ? new List<NEOS_Matter__c>()
+                : [
+                    SELECT Id, Name, CourtJurisdiction__c, RecordType.Name,
+                           Associate_Attorney__c, Associate_Attorney__r.Name,
+                           Associate_Attorney__r.FirstName,
+                           LSS_Paralegal__c, LSS_Paralegal__r.Name,
+                           LSS_Paralegal__r.FirstName
+                    FROM NEOS_Matter__c
+                    WHERE (Senior_Attorney__c   IN :teamMemberIds
+                        OR Associate_Attorney__c IN :teamMemberIds
+                        OR LSS_Paralegal__c       IN :teamMemberIds)
+                    ORDER BY Name ASC
+                    LIMIT 500
+                ];
 
             Set<Id> matterIds = new Set<Id>();
             for (NEOS_Matter__c m : matters) {
                 matterIds.add(m.Id);
             }
 
-            /* ── 2. Last time entry date per matter ── */
+            /* ── 4. Last time entry date per matter ── */
             Map<Id, Date> lastEntryDate = new Map<Id, Date>();
             if (!matterIds.isEmpty()) {
                 for (AggregateResult ar : [
@@ -52,7 +101,7 @@ public without sharing class SeniorDashboardController {
                 }
             }
 
-            /* ── 3. Open + overdue task counts per matter ── */
+            /* ── 5. Open + overdue task counts per matter ── */
             Map<Id, Integer> openTasksByMatter    = new Map<Id, Integer>();
             Map<Id, Integer> overdueTasksByMatter = new Map<Id, Integer>();
             if (!matterIds.isEmpty()) {
@@ -146,43 +195,7 @@ public without sharing class SeniorDashboardController {
                 });
             }
 
-            /* ── 6. Find my team via public group ── */
-            String teamGroupName  = '';
-            Set<Id> teamMemberIds = new Set<Id>();
-
-            List<GroupMember> myGroupMembership = [
-                SELECT GroupId, Group.Name FROM GroupMember
-                WHERE UserOrGroupId = :userId
-                  AND Group.Type = 'Regular'
-                  AND Group.Name IN :TEAM_GROUP_NAMES
-                LIMIT 1
-            ];
-            if (!myGroupMembership.isEmpty()) {
-                teamGroupName   = myGroupMembership[0].Group.Name;
-                Id groupId      = myGroupMembership[0].GroupId;
-                for (GroupMember gm : [
-                    SELECT UserOrGroupId FROM GroupMember WHERE GroupId = :groupId
-                ]) {
-                    if (gm.UserOrGroupId.getSObjectType() == User.SObjectType) {
-                        teamMemberIds.add(gm.UserOrGroupId);
-                    }
-                }
-            }
-
-            /* ── 7. Team member details from User ── */
-            Map<Id, User> teamUsers = new Map<Id, User>();
-            if (!teamMemberIds.isEmpty()) {
-                for (User u : [
-                    SELECT Id, Name, FirstName, Title, UserRole.Name
-                    FROM User
-                    WHERE Id IN :teamMemberIds AND IsActive = true
-                    ORDER BY Name ASC
-                ]) {
-                    teamUsers.put(u.Id, u);
-                }
-            }
-
-            /* ── 8. Hours + tasks per team member ── */
+            /* ── 6. Hours + tasks per team member ── */
             Map<Id, Decimal> hoursToday    = new Map<Id, Decimal>();
             Map<Id, Decimal> hoursWeek     = new Map<Id, Decimal>();
             Map<Id, Integer> overdueByUser = new Map<Id, Integer>();
@@ -216,18 +229,17 @@ public without sharing class SeniorDashboardController {
                 }
             }
 
-            /* ── 9. Build teamStats ── */
-            Decimal DAILY_GOAL = 8.0;
+            /* ── 7. Build teamStats ── */
             Integer behindCount = 0;
             List<Map<String, Object>> teamStats = new List<Map<String, Object>>();
-            for (User u : teamUsers.values()) {
+            for (User u : teamUsersList) {
                 Id      uid          = u.Id;
                 Decimal todayHrs     = hoursToday.get(uid) != null ? hoursToday.get(uid) : 0;
                 Decimal weekHrs      = hoursWeek.get(uid)  != null ? hoursWeek.get(uid)  : 0;
                 Integer overdueTasks = overdueByUser.get(uid) != null ? overdueByUser.get(uid) : 0;
                 String  role         = String.isNotBlank(u.Title) ? u.Title
                                      : (u.UserRole != null ? u.UserRole.Name : '');
-                if (todayHrs < DAILY_GOAL) behindCount++;
+                if (todayHrs == 0) behindCount++;
                 teamStats.add(new Map<String, Object>{
                     'id'           => uid,
                     'name'         => u.Name,
@@ -236,22 +248,92 @@ public without sharing class SeniorDashboardController {
                     'hoursToday'   => todayHrs,
                     'hoursWeek'    => weekHrs,
                     'overdueTasks' => overdueTasks,
-                    'atGoal'       => todayHrs >= DAILY_GOAL
+                    'atGoal'       => todayHrs > 0
                 });
             }
             teamStats.sort(new TeamStatSorter());
 
-            /* ── 10. My own hours ── */
-            Decimal myHoursToday = 0;
-            Decimal myHoursWeek  = 0;
-            for (AggregateResult ar : [
-                SELECT SUM(Submit_Hours__c) hrs FROM Time_Entry__c
-                WHERE Staff__c = :userId AND Entry_Date__c = TODAY
-            ]) { if (ar.get('hrs') != null) myHoursToday = (Decimal) ar.get('hrs'); }
-            for (AggregateResult ar : [
-                SELECT SUM(Submit_Hours__c) hrs FROM Time_Entry__c
-                WHERE Staff__c = :userId AND Entry_Date__c >= :weekStart AND Entry_Date__c <= :today
-            ]) { if (ar.get('hrs') != null) myHoursWeek = (Decimal) ar.get('hrs'); }
+            Decimal teamHoursToday = 0;
+            Decimal teamHoursWeek  = 0;
+            for (Decimal h : hoursToday.values()) teamHoursToday += h;
+            for (Decimal h : hoursWeek.values())  teamHoursWeek  += h;
+
+            /* ── 8b. Team matters by stage (manager chart) ── */
+            Map<Id, Map<String, List<Map<String, Object>>>> memberStageMap =
+                new Map<Id, Map<String, List<Map<String, Object>>>>();
+            Set<String> stagesPresent = new Set<String>();
+
+            if (!teamMemberIds.isEmpty()) {
+                for (NEOS_Matter__c m : [
+                    SELECT Id, Name, Stage__c, CourtJurisdiction__c, RecordType.Name,
+                           Senior_Attorney__c, Associate_Attorney__c, LSS_Paralegal__c
+                    FROM NEOS_Matter__c
+                    WHERE (Senior_Attorney__c IN :teamMemberIds
+                        OR Associate_Attorney__c IN :teamMemberIds
+                        OR LSS_Paralegal__c IN :teamMemberIds)
+                      AND Stage__c != null
+                      AND Stage__c NOT IN :CLOSED_STAGES
+                    ORDER BY Name ASC
+                    LIMIT 1000
+                ]) {
+                    String stage = m.Stage__c;
+                    stagesPresent.add(stage);
+                    Map<String, Object> mInfo = new Map<String, Object>{
+                        'id'           => m.Id,
+                        'name'         => m.Name,
+                        'jurisdiction' => m.CourtJurisdiction__c != null ? m.CourtJurisdiction__c : '',
+                        'recordType'   => m.RecordType != null ? m.RecordType.Name : ''
+                    };
+                    Set<Id> assigned = new Set<Id>();
+                    if (m.Senior_Attorney__c    != null && teamMemberIds.contains(m.Senior_Attorney__c))    assigned.add(m.Senior_Attorney__c);
+                    if (m.Associate_Attorney__c != null && teamMemberIds.contains(m.Associate_Attorney__c)) assigned.add(m.Associate_Attorney__c);
+                    if (m.LSS_Paralegal__c      != null && teamMemberIds.contains(m.LSS_Paralegal__c))      assigned.add(m.LSS_Paralegal__c);
+                    for (Id uid : assigned) {
+                        if (!memberStageMap.containsKey(uid)) memberStageMap.put(uid, new Map<String, List<Map<String, Object>>>());
+                        Map<String, List<Map<String, Object>>> sMap = memberStageMap.get(uid);
+                        if (!sMap.containsKey(stage)) sMap.put(stage, new List<Map<String, Object>>());
+                        sMap.get(stage).add(mInfo);
+                    }
+                }
+            }
+
+            List<String> chartStageOrder = new List<String>();
+            Set<String>  csSet           = new Set<String>();
+            for (String s : STAGE_ORDER) {
+                if (stagesPresent.contains(s)) { chartStageOrder.add(s); csSet.add(s); }
+            }
+            for (String s : stagesPresent) {
+                if (!csSet.contains(s)) { chartStageOrder.add(s); csSet.add(s); }
+            }
+
+            List<Map<String, Object>> chartMembers = new List<Map<String, Object>>();
+            for (User u : teamUsersList) {
+                Map<String, List<Map<String, Object>>> sMap = memberStageMap.containsKey(u.Id)
+                    ? memberStageMap.get(u.Id) : new Map<String, List<Map<String, Object>>>();
+                List<Map<String, Object>> segments = new List<Map<String, Object>>();
+                Integer chartTotal = 0;
+                for (String stage : chartStageOrder) {
+                    List<Map<String, Object>> sMatters = sMap.containsKey(stage) ? sMap.get(stage) : null;
+                    if (sMatters != null && !sMatters.isEmpty()) {
+                        chartTotal += sMatters.size();
+                        segments.add(new Map<String, Object>{ 'stage' => stage, 'count' => sMatters.size(), 'matters' => sMatters });
+                    }
+                }
+                String initials = '';
+                if (String.isNotBlank(u.FirstName)) initials += u.FirstName.substring(0, 1);
+                if (String.isNotBlank(u.Name)) {
+                    List<String> parts = u.Name.split(' ');
+                    if (parts.size() > 1) initials += parts[parts.size()-1].substring(0, 1);
+                }
+                chartMembers.add(new Map<String, Object>{
+                    'id'        => u.Id,
+                    'name'      => u.Name,
+                    'firstName' => String.isNotBlank(u.FirstName) ? u.FirstName : u.Name,
+                    'initials'  => initials.toUpperCase(),
+                    'total'     => chartTotal,
+                    'segments'  => segments
+                });
+            }
 
             Map<String, Object> result = new Map<String, Object>();
             result.put('matterHealth',          matterHealth);
@@ -261,10 +343,14 @@ public without sharing class SeniorDashboardController {
             result.put('upcomingDeadlineCount', upcomingDeadlineCount);
             result.put('behindCount',           behindCount);
             result.put('teamMemberCount',       teamUsers.size());
-            result.put('myHoursToday',          myHoursToday);
-            result.put('myHoursWeek',           myHoursWeek);
+            result.put('teamHoursToday',        teamHoursToday);
+            result.put('teamHoursWeek',         teamHoursWeek);
             result.put('firstName',             UserInfo.getFirstName());
             result.put('currentUserId',         userId);
+            result.put('managerChart', new Map<String, Object>{
+                'stageOrder' => chartStageOrder,
+                'members'    => chartMembers
+            });
             return result;
 
         } catch (Exception e) {

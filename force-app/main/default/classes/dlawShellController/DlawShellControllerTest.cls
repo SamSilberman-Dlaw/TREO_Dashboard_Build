@@ -15,8 +15,9 @@ private class DlawShellControllerTest {
         System.assertNotEquals(null, config.get('profile'),  'profile should not be null');
 
         Map<String, Boolean> tabs = (Map<String, Boolean>) config.get('tabs');
-        System.assert(tabs.containsKey('operations'), 'Tabs should have operations key');
-        System.assert(tabs.containsKey('timeEntry'),  'Tabs should have timeEntry key');
-        System.assert(tabs.containsKey('calendar'),   'Tabs should have calendar key');
+        System.assert(tabs.containsKey('operations'),       'Tabs should have operations key');
+        System.assert(tabs.containsKey('timeEntry'),        'Tabs should have timeEntry key');
+        System.assert(tabs.containsKey('calendar'),         'Tabs should have calendar key');
+        System.assert(tabs.containsKey('seniorDashboard'), 'Tabs should have seniorDashboard key');
     }
 }

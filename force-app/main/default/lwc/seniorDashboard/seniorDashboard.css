@@ -147,6 +147,7 @@
     overflow-y: auto;
     flex: 1;
     min-height: 0;
+    max-height: 420px;
 }
 .sd-matter-list::-webkit-scrollbar { width: 5px; }
 .sd-matter-list::-webkit-scrollbar-track { background: #f3f2f2; }
@@ -340,4 +341,204 @@
     .sd-sc {
         flex: 1 1 calc(50% - 0.5rem);
     }
+}
+
+/* ── Manager Chart ── */
+.sd-chart-section { margin-top: 0; }
+
+.sd-chart-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.sd-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.875rem;
+}
+.sd-chart-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.sd-chart-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.sd-chart-legend-label {
+    font-size: 0.6875rem;
+    color: #3e3e3c;
+    font-weight: 400;
+}
+
+.sd-chart-body {
+    display: flex;
+    flex-direction: column;
+}
+.sd-chart-member-block {
+    border-bottom: 1px solid #f3f2f2;
+}
+.sd-chart-member-block:last-child { border-bottom: none; }
+
+.sd-chart-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.875rem;
+}
+.sd-chart-who {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 110px;
+    flex-shrink: 0;
+}
+.sd-chart-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #0176d3;
+    color: #fff;
+    font-size: 0.625rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.sd-chart-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #3e3e3c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sd-chart-bar-area {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+.sd-chart-bar {
+    display: flex;
+    height: 26px;
+    border-radius: 4px;
+    overflow: hidden;
+    width: 100%;
+}
+.sd-chart-seg {
+    height: 100%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: filter 0.12s;
+    min-width: 3px;
+    padding: 0;
+}
+.sd-chart-seg:hover { filter: brightness(0.88); }
+.sd-chart-seg--active {
+    filter: brightness(0.82);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.25);
+}
+.sd-chart-seg-count {
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.95);
+    pointer-events: none;
+    user-select: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+}
+.sd-chart-no-matters {
+    font-size: 0.75rem;
+    color: #b0adab;
+    font-style: italic;
+}
+.sd-chart-total-col {
+    width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+}
+.sd-chart-total {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #3e3e3c;
+}
+
+/* Drill-down */
+.sd-chart-drill {
+    border-top: 1px solid #e5e5e5;
+    background: #fafaf9;
+}
+.sd-chart-drill-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.875rem;
+    border-bottom: 1px solid #f3f2f2;
+}
+.sd-chart-drill-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #3e3e3c;
+}
+.sd-chart-drill-close {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #706e6b;
+    font-size: 0.875rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 3px;
+    line-height: 1;
+}
+.sd-chart-drill-close:hover { background: #e5e5e5; }
+.sd-chart-drill-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+.sd-chart-drill-list::-webkit-scrollbar { width: 5px; }
+.sd-chart-drill-list::-webkit-scrollbar-track { background: #f3f2f2; }
+.sd-chart-drill-list::-webkit-scrollbar-thumb { background: #b0adab; border-radius: 3px; }
+.sd-chart-drill-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.875rem;
+    border-bottom: 1px solid #f3f2f2;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+.sd-chart-drill-row:last-child { border-bottom: none; }
+.sd-chart-drill-row:hover { background: #f0f4ff; }
+.sd-chart-drill-name {
+    font-size: 0.8125rem;
+    color: #0176d3;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+.sd-chart-drill-rt {
+    font-size: 0.6875rem;
+    color: #3ba755;
+    white-space: nowrap;
+    margin-left: 0.75rem;
+    flex-shrink: 0;
+    font-weight: 500;
+}
+.sd-chart-drill-jx {
+    font-size: 0.6875rem;
+    color: #706e6b;
+    white-space: nowrap;
+    margin-left: 0.75rem;
+    flex-shrink: 0;
 }
