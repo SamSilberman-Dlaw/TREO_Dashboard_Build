@@ -156,13 +156,10 @@
                                         <div class="sd-team-info">
                                             <div class="sd-team-name">{s.name}</div>
                                             <div class="sd-team-role">{s.role}</div>
-                                            <div class="sd-team-bar-wrap">
-                                                <div class={s.barClass} style={s.barWidth}></div>
-                                            </div>
                                         </div>
 
                                         <div class="sd-team-nums">
-                                            <div class="sd-team-hours-today">
+                                            <div class={s.hoursClass}>
                                                 {s.hoursDisplay}h today
                                             </div>
                                             <div class="sd-team-hours-week">

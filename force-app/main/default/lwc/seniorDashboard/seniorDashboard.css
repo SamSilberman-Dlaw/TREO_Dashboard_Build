@@ -285,7 +285,6 @@
     color: #fff;
 }
 .sd-team-avatar--ontrack { background: #2e844a; }
-.sd-team-avatar--caution { background: #c25900; }
 .sd-team-avatar--behind  { background: #ba0517; }
 
 .sd-team-info { flex: 1; min-width: 0; }
@@ -302,22 +301,6 @@
     color: #b0adab;
     margin-top: 1px;
 }
-.sd-team-bar-wrap {
-    margin-top: 5px;
-    height: 4px;
-    background: #e5e5e5;
-    border-radius: 2px;
-    overflow: hidden;
-}
-.sd-team-bar {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.4s ease;
-    min-width: 2px;
-}
-.sd-team-bar--ontrack { background: #2e844a; }
-.sd-team-bar--behind  { background: #ba0517; }
-
 .sd-team-nums {
     text-align: right;
     flex-shrink: 0;
@@ -328,6 +311,8 @@
     font-weight: 600;
     color: #3e3e3c;
 }
+.sd-team-hours-today--ontrack { color: #2e844a; }
+.sd-team-hours-today--behind  { color: #ba0517; }
 .sd-team-hours-week {
     font-size: 0.6875rem;
     color: #b0adab;
@@ -339,9 +324,6 @@
     font-weight: 600;
     margin-top: 2px;
 }
-.sd-team-status--ontrack { color: #2e844a; }
-.sd-team-status--caution { color: #c25900; }
-.sd-team-status--behind  { color: #ba0517; }
 
 /* ── Empty state ── */
 .sd-empty {

@@ -4,7 +4,6 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getDashboardData from '@salesforce/apex/SeniorDashboardController.getDashboardData';
 
 const REFRESH_MS  = 5 * 60 * 1000;
-const DAILY_GOAL  = 8;
 
 const STATUS_LABELS = { atrisk: 'At Risk', caution: 'Caution', ontrack: 'On Track' };
 const FILTER_LABELS = { all: 'All', atrisk: 'At Risk', caution: 'Caution', ontrack: 'On Track' };
@@ -133,19 +132,16 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     _processTeamStats(rows) {
         return rows.map(s => {
             const hrs    = Number(s.hoursToday) || 0;
-            const pct    = Math.min(Math.round(hrs / DAILY_GOAL * 100), 100);
-            const status   = hrs > 0 ? 'ontrack' : 'behind';
-            const parts    = String(s.name || '').split(' ');
+            const status = hrs > 0 ? 'ontrack' : 'behind';
+            const parts  = String(s.name || '').split(' ');
             const initials = (String(s.firstName || parts[0] || '').slice(0, 1)
                 + (parts.length > 1 ? parts[parts.length - 1].slice(0, 1) : '')).toUpperCase();
             return {
                 ...s,
-                hoursDisplay:  Number(s.hoursToday).toFixed(1),
-                weekDisplay:   Number(s.hoursWeek).toFixed(1),
-                barWidth:      `${pct}%`,
-                barClass:      `sd-team-bar sd-team-bar--${status}`,
-                avatarClass:   `sd-team-avatar sd-team-avatar--${status}`,
-                statusClass:   `sd-team-status sd-team-status--${status}`,
+                hoursDisplay: hrs.toFixed(1),
+                weekDisplay:  (Number(s.hoursWeek) || 0).toFixed(1),
+                hoursClass:   `sd-team-hours-today sd-team-hours-today--${status}`,
+                avatarClass:  `sd-team-avatar sd-team-avatar--${status}`,
                 initials
             };
         });
@@ -249,9 +245,11 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     }
 
     get teamPanelHeader() {
-        const n    = this.teamStats.length;
-        const name = this.teamGroupName || 'My Team';
-        return `${name} — Today${n > 0 ? ` (${n})` : ''}`;
+        const name   = this.teamGroupName || 'My Team';
+        const total  = this.teamStats.length;
+        const logged = this.teamStats.filter(s => Number(s.hoursToday) > 0).length;
+        if (total === 0) return name;
+        return `${name} — ${logged}/${total} logged today`;
     }
 
     get chartPanelHeader() {
