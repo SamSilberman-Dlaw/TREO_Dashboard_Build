@@ -6,7 +6,8 @@ import CHARTJS from '@salesforce/resourceUrl/ChartJS';
 import getAllChartData    from '@salesforce/apex/TimeEntryDashboardController.getAllChartData';
 import getAccurateTotals from '@salesforce/apex/TimeEntryDashboardController.getAccurateTotals';
 import getTeams          from '@salesforce/apex/TimeEntryDashboardController.getTeams';
-import getStaffEntries   from '@salesforce/apex/TimeEntryDashboardController.getStaffEntries';
+import getStaffEntries    from '@salesforce/apex/TimeEntryDashboardController.getStaffEntries';
+import getAllStaffEntries from '@salesforce/apex/TimeEntryDashboardController.getAllStaffEntries';
 
 const CHART_COLORS = [
     '#0176d3', '#1b96ff', '#032d60', '#0e56c4',
@@ -61,10 +62,13 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
     @track _drillSearch       = '';
     @track _drillSortField    = 'hours';
     @track _drillSortDir      = 'desc';
-    @track _staffDrillOpen    = false;
-    @track _staffDrillName    = '';
-    @track _staffDrillEntries = [];
-    @track _staffDrillLoading = false;
+    @track _staffDrillOpen      = false;
+    @track _staffDrillName      = '';
+    @track _staffDrillEntries   = [];
+    @track _staffDrillLoading   = false;
+    @track _staffDrillError     = false;
+    @track _staffDrillTruncated = false;
+    _staffDrillIsMulti          = false;
     _byStaff                = [];
     _byMatter               = [];
     _byDate                 = [];
@@ -186,7 +190,11 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
     }
 
     get staffDrillColumns() {
-        return [
+        const cols = [];
+        if (this._staffDrillIsMulti) {
+            cols.push({ label: 'Staff', fieldName: 'staff', sortable: true });
+        }
+        cols.push(
             { label: 'Date',   fieldName: 'date',      type: 'date-local', sortable: true,
               typeAttributes: { year: 'numeric', month: 'short', day: 'numeric' } },
             { label: 'Matter', fieldName: 'matterUrl', type: 'url', wrapText: true,
@@ -195,7 +203,12 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
               typeAttributes: { minimumFractionDigits: 1, maximumFractionDigits: 1 },
               cellAttributes: { alignment: 'left' } },
             { label: 'Notes',  fieldName: 'notes',     wrapText: true }
-        ];
+        );
+        return cols;
+    }
+
+    get showViewAllEntries() {
+        return this._drillType === 'hours' || this._drillType === 'staff';
     }
 
     get staffDrillTotalHours() {
@@ -384,8 +397,9 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
     }
 
     closeDrill() {
-        this._drillOpen      = false;
-        this._staffDrillOpen = false;
+        this._drillOpen         = false;
+        this._staffDrillOpen    = false;
+        this._staffDrillIsMulti = false;
     }
 
     handleDrillRowAction(e) {
@@ -406,34 +420,96 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
                 this._load();
             }
         } else if (action.name === 'entries' && row.id) {
-            this._staffDrillName    = row.name;
-            this._staffDrillEntries = [];
-            this._staffDrillLoading = true;
-            this._staffDrillOpen    = true;
+            this._staffDrillName      = row.name;
+            this._staffDrillIsMulti   = false;
+            this._staffDrillEntries   = [];
+            this._staffDrillError     = false;
+            this._staffDrillTruncated = false;
+            this._staffDrillLoading   = true;
+            this._staffDrillOpen      = true;
             getStaffEntries({ staffId: row.id, startDate: this.startDate, endDate: this.endDate })
                 .then(data => {
-                    this._staffDrillEntries = (data || []).map(e => ({
+                    const entries = data || [];
+                    this._staffDrillTruncated = entries.length >= 2000;
+                    this._staffDrillEntries   = entries.map(e => ({
                         ...e,
                         matterUrl: e.matterId ? `/${e.matterId}` : null
                     }));
                     this._staffDrillLoading = false;
                 })
-                .catch(() => { this._staffDrillLoading = false; });
+                .catch(() => {
+                    this._staffDrillError   = true;
+                    this._staffDrillLoading = false;
+                });
         }
     }
 
     closeStaffDrill() {
-        this._staffDrillOpen    = false;
-        this._staffDrillEntries = [];
-        this._staffDrillName    = '';
+        this._staffDrillOpen      = false;
+        this._staffDrillEntries   = [];
+        this._staffDrillName      = '';
+        this._staffDrillIsMulti   = false;
+        this._staffDrillError     = false;
+        this._staffDrillTruncated = false;
+    }
+
+    handleViewAllEntries() {
+        let staffIds = [];
+        if (this.selectedStaffIds.length > 0) {
+            staffIds = this.selectedStaffIds;
+        } else if (this.selectedTeamId) {
+            const team = this._teamsData.find(t => t.id === this.selectedTeamId);
+            staffIds = team ? (team.memberIds || []) : [];
+        } else {
+            staffIds = (this._byStaff || []).map(s => s.id).filter(Boolean);
+        }
+        if (!staffIds.length) return;
+
+        let label = 'All Staff';
+        if (this.selectedTeamId) {
+            const t = this.teamOptions.find(o => o.value === this.selectedTeamId);
+            label = t ? t.label : 'Team';
+        } else if (this.selectedStaffIds.length > 0) {
+            label = `${staffIds.length} Staff`;
+        }
+
+        this._staffDrillName      = `${label} — All Entries`;
+        this._staffDrillIsMulti   = true;
+        this._staffDrillEntries   = [];
+        this._staffDrillError     = false;
+        this._staffDrillTruncated = false;
+        this._staffDrillLoading   = true;
+        this._staffDrillOpen      = true;
+        getAllStaffEntries({ staffIds, startDate: this.startDate, endDate: this.endDate })
+            .then(data => {
+                const entries = data || [];
+                this._staffDrillTruncated = entries.length >= 2000;
+                this._staffDrillEntries   = entries.map(e => ({
+                    ...e,
+                    matterUrl: e.matterId ? `/${e.matterId}` : null
+                }));
+                this._staffDrillLoading = false;
+            })
+            .catch(() => {
+                this._staffDrillError   = true;
+                this._staffDrillLoading = false;
+            });
     }
 
     handleStaffDrillExport() {
-        const cols   = this.staffDrillColumns.filter(c => c.fieldName && c.fieldName !== 'matterUrl');
-        const header = ['Date', 'Matter', 'Hours', 'Notes'].join(',');
-        const body   = this._staffDrillEntries.map(e =>
-            [e.date || '', e.matter ? `"${e.matter}"` : '', e.hours || 0, e.notes ? `"${e.notes}"` : ''].join(',')
-        ).join('\n');
+        const headerCols = this._staffDrillIsMulti
+            ? ['Staff', 'Date', 'Matter', 'Hours', 'Notes']
+            : ['Date', 'Matter', 'Hours', 'Notes'];
+        const header = headerCols.join(',');
+        const body   = this._staffDrillEntries.map(e => {
+            const row = this._staffDrillIsMulti ? [e.staff || ''] : [];
+            return [...row,
+                e.date || '',
+                e.matter ? `"${e.matter}"` : '',
+                e.hours || 0,
+                e.notes  ? `"${e.notes}"` : ''
+            ].join(',');
+        }).join('\n');
         const datePart  = this._activePreset || `${this.startDate}-to-${this.endDate}`;
         const firstName = this._staffDrillName.split(' ')[0];
         const link = this.template.querySelector('.ted-export-link');

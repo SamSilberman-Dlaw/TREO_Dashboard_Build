@@ -261,6 +261,9 @@
                         <button type="button" class="ted-export-btn" onclick={handleStaffDrillExport} title="Download CSV">↓ CSV</button>
                     </template>
                     <template if:false={_staffDrillOpen}>
+                        <template if:true={showViewAllEntries}>
+                            <button type="button" class="ted-export-btn" onclick={handleViewAllEntries} title="View all entries for current filter">View All Entries</button>
+                        </template>
                         <button type="button" class="ted-export-btn" onclick={handleDrillExport} title="Download CSV">↓ CSV</button>
                     </template>
                     <button type="button" class="ted-drill-close" onclick={closeDrill}>✕</button>
@@ -275,13 +278,25 @@
                             <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
                         </div>
                     </template>
+                    <template if:true={_staffDrillError}>
+                        <div class="ted-drill-error">
+                            Could not load entries. Check your connection and try again.
+                        </div>
+                    </template>
                     <template if:false={_staffDrillLoading}>
-                        <lightning-datatable
-                            key-field="id"
-                            data={_staffDrillEntries}
-                            columns={staffDrillColumns}
-                            hide-checkbox-column>
-                        </lightning-datatable>
+                        <template if:false={_staffDrillError}>
+                            <template if:true={_staffDrillTruncated}>
+                                <div class="ted-drill-truncated">
+                                    Showing the 2,000 most recent entries — narrow your date range to see all.
+                                </div>
+                            </template>
+                            <lightning-datatable
+                                key-field="id"
+                                data={_staffDrillEntries}
+                                columns={staffDrillColumns}
+                                hide-checkbox-column>
+                            </lightning-datatable>
+                        </template>
                     </template>
                 </div>
                 <div class="ted-drill-footer">

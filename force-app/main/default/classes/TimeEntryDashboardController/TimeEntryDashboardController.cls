@@ -7,6 +7,44 @@ public without sharing class TimeEntryDashboardController {
     };
 
     @AuraEnabled
+    public static List<Map<String, Object>> getAllStaffEntries(
+        List<String> staffIds, String startDate, String endDate
+    ) {
+        try {
+            if (staffIds == null || staffIds.isEmpty()) return new List<Map<String, Object>>();
+            Set<Id> sidSet = new Set<Id>();
+            for (String s : staffIds) { if (String.isNotBlank(s)) sidSet.add((Id) s); }
+            Date startD = String.isNotBlank(startDate) ? Date.valueOf(startDate) : Date.today().addDays(-30);
+            Date endD   = String.isNotBlank(endDate)   ? Date.valueOf(endDate)   : Date.today();
+            List<Map<String, Object>> entries = new List<Map<String, Object>>();
+            for (Time_Entry__c te : [
+                SELECT Id, Staff__r.Name, Entry_Date__c, Submit_Hours__c, Notes__c,
+                       NEOS_Matter__c, NEOS_Matter__r.Name
+                FROM Time_Entry__c
+                WHERE Staff__c IN :sidSet
+                  AND Entry_Date__c >= :startD AND Entry_Date__c <= :endD
+                ORDER BY Entry_Date__c DESC, Staff__r.Name ASC
+                LIMIT 2000
+            ]) {
+                String matterName = te.NEOS_Matter__r != null ? te.NEOS_Matter__r.Name : '';
+                String matterId   = te.NEOS_Matter__c != null ? String.valueOf(te.NEOS_Matter__c) : '';
+                entries.add(new Map<String, Object>{
+                    'id'       => te.Id,
+                    'staff'    => te.Staff__r != null ? te.Staff__r.Name : '',
+                    'date'     => String.valueOf(te.Entry_Date__c),
+                    'hours'    => te.Submit_Hours__c,
+                    'notes'    => te.Notes__c,
+                    'matter'   => matterName,
+                    'matterId' => matterId
+                });
+            }
+            return entries;
+        } catch (Exception e) {
+            throw new AuraHandledException(e.getTypeName() + ': ' + e.getMessage());
+        }
+    }
+
+    @AuraEnabled
     public static List<Map<String, Object>> getStaffEntries(
         String staffId, String startDate, String endDate
     ) {

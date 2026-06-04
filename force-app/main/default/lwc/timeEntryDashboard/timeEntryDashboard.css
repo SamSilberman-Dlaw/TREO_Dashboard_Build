@@ -466,6 +466,21 @@
     justify-content: center;
     padding: 2rem;
 }
+.ted-drill-error {
+    padding: 1.5rem;
+    text-align: center;
+    font-size: 0.8125rem;
+    color: #ba0517;
+    background: #fff1f1;
+    border-bottom: 1px solid #f7b5b5;
+}
+.ted-drill-truncated {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    color: #c25900;
+    background: #fff4e5;
+    border-bottom: 1px solid #ffd599;
+}
 .ted-drill-body {
     overflow-y: auto;
     flex: 1;
