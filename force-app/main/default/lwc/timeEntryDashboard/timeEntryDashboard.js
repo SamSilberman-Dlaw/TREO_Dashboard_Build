@@ -54,6 +54,10 @@ export default class TimeEntryDashboard extends LightningElement {
     prevEntryCount = 0;
 
     @track staffTruncated = false;
+    @track _drillOpen  = false;
+    @track _drillType  = '';
+    _byStaff           = [];
+    _byMatter          = [];
 
     _activePreset      = '30';
     _chartjsLoaded     = false;
@@ -173,6 +177,48 @@ export default class TimeEntryDashboard extends LightningElement {
         if (pct === 0) return { label: '±0%', cls: 'delta delta--neutral' };
         return { label: (pct > 0 ? '+' : '') + pct + '%', cls: pct > 0 ? 'delta delta--positive' : 'delta delta--negative' };
     }
+
+    /* ── Drill-down modal ── */
+
+    get drillTitle() {
+        const map = { hours: 'Total Hours', entries: 'Entries', matters: 'Matters', staff: 'Staff Members' };
+        return `${map[this._drillType] || ''} · ${this.dateRangeLabel}`;
+    }
+
+    get drillRows() {
+        const src  = this._drillType === 'matters' ? this._byMatter : this._byStaff;
+        const rows = (src || []).map((r, i) => ({
+            id:      String(i),
+            name:    r.name  || 'Unknown',
+            hours:   Number(r.hours || 0),
+            entries: Number(r.count || 0)
+        }));
+        return this._drillType === 'entries'
+            ? rows.slice().sort((a, b) => b.entries - a.entries)
+            : rows.slice().sort((a, b) => b.hours   - a.hours);
+    }
+
+    get drillColumns() {
+        const hoursCol   = { label: 'Hours',   fieldName: 'hours',   type: 'number',
+                             typeAttributes: { minimumFractionDigits: 1, maximumFractionDigits: 1 },
+                             cellAttributes: { alignment: 'left' } };
+        const entriesCol = { label: 'Entries', fieldName: 'entries', type: 'number',
+                             cellAttributes: { alignment: 'left' } };
+        if (this._drillType === 'matters') {
+            return [{ label: 'Matter', fieldName: 'name' }, hoursCol, entriesCol];
+        }
+        return [
+            { label: 'Staff', fieldName: 'name' },
+            hoursCol,
+            entriesCol
+        ];
+    }
+
+    handleHoursCardClick()   { this._drillType = 'hours';   this._drillOpen = true; }
+    handleEntriesCardClick() { this._drillType = 'entries'; this._drillOpen = true; }
+    handleMattersCardClick() { this._drillType = 'matters'; this._drillOpen = true; }
+    handleStaffCardClick()   { this._drillType = 'staff';   this._drillOpen = true; }
+    closeDrill()             { this._drillOpen = false; }
 
     clearChartFilter() {
         this._chartStaffFilter  = null;
@@ -357,6 +403,8 @@ export default class TimeEntryDashboard extends LightningElement {
                 this.prevEntryCount = data.prevEntryCount;
                 this.staffTruncated = data.staffTruncated;
                 this.matterCount    = data.matterCount;
+                this._byStaff       = data.byStaff  || [];
+                this._byMatter      = data.byMatter || [];
 
                 this.barHasData   = data.byStaff.length > 0;
                 this.lineHasData  = data.byDate.length  > 0;

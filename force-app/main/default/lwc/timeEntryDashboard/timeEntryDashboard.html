@@ -88,14 +88,14 @@
 
         <!-- Summary cards -->
         <div class="summary-row slds-var-p-horizontal_medium slds-var-p-bottom_medium">
-            <div class="summary-card">
+            <div class="summary-card summary-card--clickable" onclick={handleHoursCardClick} title="See breakdown by staff">
                 <div class="summary-value">{totalHoursDisplay}</div>
                 <div class="summary-label">Total Hours</div>
                 <template if:true={totalHoursDelta}>
                     <div class={totalHoursDelta.cls}>{totalHoursDelta.label} {prevPeriodLabel}</div>
                 </template>
             </div>
-            <div class="summary-card">
+            <div class="summary-card summary-card--clickable" onclick={handleEntriesCardClick} title="See breakdown by staff">
                 <div class="summary-value">{entryCount}</div>
                 <div class="summary-label">Entries</div>
                 <template if:true={entryCountDelta}>
@@ -103,12 +103,12 @@
                 </template>
             </div>
             <template if:true={isHomeMode}>
-                <div class="summary-card">
+                <div class="summary-card summary-card--clickable" onclick={handleMattersCardClick} title="See breakdown by matter">
                     <div class="summary-value">{matterCount}</div>
                     <div class="summary-label">Matters</div>
                 </div>
             </template>
-            <div class="summary-card">
+            <div class="summary-card summary-card--clickable" onclick={handleStaffCardClick} title="See staff hours">
                 <div class="summary-value">{staffDisplay}</div>
                 <div class="summary-label">Staff Members</div>
             </div>
@@ -223,4 +223,24 @@
         </template>
 
     </lightning-card>
+
+    <!-- Drill-down modal -->
+    <template if:true={_drillOpen}>
+        <div class="ted-drill-overlay" onclick={closeDrill}></div>
+        <div class="ted-drill-modal">
+            <div class="ted-drill-hdr">
+                <span class="ted-drill-title">{drillTitle}</span>
+                <button type="button" class="ted-drill-close" onclick={closeDrill}>✕</button>
+            </div>
+            <div class="ted-drill-body">
+                <lightning-datatable
+                    key-field="id"
+                    data={drillRows}
+                    columns={drillColumns}
+                    hide-checkbox-column>
+                </lightning-datatable>
+            </div>
+        </div>
+    </template>
+
 </template>

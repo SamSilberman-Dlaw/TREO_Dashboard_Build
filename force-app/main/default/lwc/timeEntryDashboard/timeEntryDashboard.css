@@ -322,3 +322,66 @@
     text-align: center;
     padding-top: 0.4rem;
 }
+
+/* ── Clickable summary cards ── */
+.summary-card--clickable {
+    cursor: pointer;
+    transition: filter 0.1s, transform 0.1s, box-shadow 0.1s;
+}
+.summary-card--clickable:hover {
+    filter: brightness(0.95);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+/* ── Drill-down modal ── */
+.ted-drill-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9100;
+    background: rgba(0,0,0,0.3);
+}
+.ted-drill-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9101;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    max-width: 640px;
+    width: 90vw;
+    max-height: 75vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.ted-drill-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem 0.875rem;
+    border-bottom: 1px solid #e5e5e5;
+    flex-shrink: 0;
+}
+.ted-drill-title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #3e3e3c;
+}
+.ted-drill-close {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #706e6b;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    line-height: 1;
+}
+.ted-drill-close:hover { background: #f3f2f2; }
+.ted-drill-body {
+    overflow-y: auto;
+    flex: 1;
+}
