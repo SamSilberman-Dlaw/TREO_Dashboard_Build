@@ -141,11 +141,19 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
             const dlLabel   = daysAway == null ? '' : daysAway === 0 ? 'Today' : daysAway === 1 ? '1 day' : `${daysAway} days`;
             const dlUrgent  = daysAway != null && daysAway <= 7;
             const dlCaution = daysAway != null && daysAway <= 14;
-            const hasEntry     = !!m.lastEntryDate;
-            const stale        = hasEntry && m.noRecentEntry;
-            const lastEntry    = hasEntry
-                ? (stale ? `${this._fmtDate(m.lastEntryDate)} · 30+ days` : this._fmtDate(m.lastEntryDate))
-                : 'No entries';
+            const hasEntry = !!m.lastEntryDate;
+            const stale    = hasEntry && m.noRecentEntry;
+            let lastEntry  = 'No entries';
+            if (hasEntry) {
+                const [y, mo, d] = m.lastEntryDate.split('-').map(Number);
+                const entryDate  = new Date(y, mo - 1, d);
+                const todayDate  = new Date();
+                todayDate.setHours(0, 0, 0, 0);
+                const daysAgo = Math.round((todayDate - entryDate) / 86400000);
+                lastEntry = daysAgo === 0 ? 'Last entry: today'
+                          : daysAgo === 1 ? 'Last entry: yesterday'
+                          : `Last entry: ${daysAgo} days ago`;
+            }
             const lastEntryCls = !hasEntry ? 'sd-matter-entry sd-matter-entry--never'
                                : stale     ? 'sd-matter-entry sd-matter-entry--stale'
                                :             'sd-matter-entry';
