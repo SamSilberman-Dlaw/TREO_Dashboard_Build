@@ -12,11 +12,14 @@
                 </div>
 
                 <div class="preset-group">
-                    <button type="button" class={btn7d}   onclick={setPreset} data-preset="7">7 Days</button>
-                    <button type="button" class={btn15d}  onclick={setPreset} data-preset="15">15 Days</button>
-                    <button type="button" class={btn30d}  onclick={setPreset} data-preset="30">30 Days</button>
-                    <button type="button" class={btn90d}  onclick={setPreset} data-preset="90">90 Days</button>
-                    <button type="button" class={btnMtd}  onclick={setPreset} data-preset="mtd">MTD</button>
+                    <button type="button" class={btnThisWeek} onclick={setPreset} data-preset="thisweek">This Wk</button>
+                    <button type="button" class={btnLastWeek} onclick={setPreset} data-preset="lastweek">Last Wk</button>
+                    <button type="button" class={btn7d}       onclick={setPreset} data-preset="7">7 Days</button>
+                    <button type="button" class={btn15d}      onclick={setPreset} data-preset="15">15 Days</button>
+                    <button type="button" class={btn30d}      onclick={setPreset} data-preset="30">30 Days</button>
+                    <button type="button" class={btn90d}      onclick={setPreset} data-preset="90">90 Days</button>
+                    <button type="button" class={btnMtd}      onclick={setPreset} data-preset="mtd">MTD</button>
+                    <button type="button" class="preset-btn" onclick={handleRefresh} title="Refresh">↻</button>
                 </div>
 
                 <div class="date-inputs">
@@ -129,7 +132,7 @@
                             </template>
                         </div>
                         <template if:true={staffTruncated}>
-                            <div class="chart-truncated-note">Top 20 shown — narrow your date range to see all staff</div>
+                            <div class="chart-truncated-note">Top 20 shown — click a bar to filter · click Total Hours card to see all</div>
                         </template>
                     </div>
 
@@ -163,6 +166,11 @@
                                     <div class="chart-empty">No data</div>
                                 </template>
                             </div>
+                            <template if:true={hasHiddenMatters}>
+                                <div class="chart-more-note" onclick={handleMattersCardClick}>
+                                    +{mattersHiddenCount} more matters — click to see all
+                                </div>
+                            </template>
                         </div>
                     </template>
 
@@ -228,33 +236,77 @@
     <template if:true={_drillOpen}>
         <div class="ted-drill-overlay" onclick={closeDrill}></div>
         <div class="ted-drill-modal">
+            <!-- Header -->
             <div class="ted-drill-hdr">
                 <div class="ted-drill-hdr-left">
-                    <span class="ted-drill-title">{drillTitle}</span>
-                    <span class="ted-drill-subtitle">{drillSubtitle}</span>
+                    <template if:true={_staffDrillOpen}>
+                        <button type="button" class="ted-back-btn" onclick={closeStaffDrill}>← Back</button>
+                        <span class="ted-drill-title">{_staffDrillName} — Time Entries · {staffDrillTotalHours}h</span>
+                    </template>
+                    <template if:false={_staffDrillOpen}>
+                        <span class="ted-drill-title">{drillTitle}</span>
+                        <span class="ted-drill-subtitle">{drillSubtitle}</span>
+                    </template>
                 </div>
                 <div class="ted-drill-hdr-right">
-                    <button type="button" class="ted-export-btn" onclick={handleDrillExport} title="Download CSV">↓ CSV</button>
+                    <template if:true={_staffDrillOpen}>
+                        <button type="button" class="ted-export-btn" onclick={handleStaffDrillExport} title="Download CSV">↓ CSV</button>
+                    </template>
+                    <template if:false={_staffDrillOpen}>
+                        <button type="button" class="ted-export-btn" onclick={handleDrillExport} title="Download CSV">↓ CSV</button>
+                    </template>
                     <button type="button" class="ted-drill-close" onclick={closeDrill}>✕</button>
                 </div>
             </div>
-            <div class="ted-drill-search">
-                <input type="text" class="ted-drill-search-input"
-                       placeholder="Search..."
-                       value={_drillSearch}
-                       oninput={handleDrillSearch} />
-            </div>
-            <div class="ted-drill-body">
-                <lightning-datatable
-                    key-field="id"
-                    data={drillRows}
-                    columns={drillColumns}
-                    sorted-by={_drillSortField}
-                    sorted-direction={_drillSortDir}
-                    onsort={handleDrillSort}
-                    hide-checkbox-column>
-                </lightning-datatable>
-            </div>
+
+            <!-- Staff entry drill -->
+            <template if:true={_staffDrillOpen}>
+                <div class="ted-drill-body">
+                    <template if:true={_staffDrillLoading}>
+                        <div class="ted-drill-loading">
+                            <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+                        </div>
+                    </template>
+                    <template if:false={_staffDrillLoading}>
+                        <lightning-datatable
+                            key-field="id"
+                            data={_staffDrillEntries}
+                            columns={staffDrillColumns}
+                            hide-checkbox-column>
+                        </lightning-datatable>
+                    </template>
+                </div>
+                <div class="ted-drill-footer">
+                    <span class="ted-drill-footer-label">Showing {_staffDrillEntries.length} entries</span>
+                    <span class="ted-drill-footer-totals">{staffDrillTotalHours}h total</span>
+                </div>
+            </template>
+
+            <!-- Main drill -->
+            <template if:false={_staffDrillOpen}>
+                <div class="ted-drill-search">
+                    <input type="text" class="ted-drill-search-input"
+                           placeholder="Search..."
+                           value={_drillSearch}
+                           oninput={handleDrillSearch} />
+                </div>
+                <div class="ted-drill-body">
+                    <lightning-datatable
+                        key-field="id"
+                        data={drillRows}
+                        columns={drillColumns}
+                        sorted-by={_drillSortField}
+                        sorted-direction={_drillSortDir}
+                        onsort={handleDrillSort}
+                        onrowaction={handleDrillRowAction}
+                        hide-checkbox-column>
+                    </lightning-datatable>
+                </div>
+                <div class="ted-drill-footer">
+                    <span class="ted-drill-footer-label">Showing {drillRows.length} rows</span>
+                    <span class="ted-drill-footer-totals">{drillTotals.hours}h · {drillTotals.entries} entries</span>
+                </div>
+            </template>
         </div>
         <a class="ted-export-link" aria-hidden="true"></a>
     </template>

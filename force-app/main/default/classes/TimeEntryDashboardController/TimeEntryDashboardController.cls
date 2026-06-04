@@ -6,6 +6,41 @@ public without sharing class TimeEntryDashboardController {
         'Law Motion', 'Senior Counsel'
     };
 
+    @AuraEnabled
+    public static List<Map<String, Object>> getStaffEntries(
+        String staffId, String startDate, String endDate
+    ) {
+        try {
+            if (String.isBlank(staffId)) return new List<Map<String, Object>>();
+            Id   sid    = (Id) staffId;
+            Date startD = String.isNotBlank(startDate) ? Date.valueOf(startDate) : Date.today().addDays(-30);
+            Date endD   = String.isNotBlank(endDate)   ? Date.valueOf(endDate)   : Date.today();
+            List<Map<String, Object>> entries = new List<Map<String, Object>>();
+            for (Time_Entry__c te : [
+                SELECT Id, Entry_Date__c, Submit_Hours__c, Notes__c, NEOS_Matter__r.Name
+                FROM Time_Entry__c
+                WHERE Staff__c = :sid
+                  AND Entry_Date__c >= :startD AND Entry_Date__c <= :endD
+                ORDER BY Entry_Date__c DESC
+                LIMIT 200
+            ]) {
+                String matterName = te.NEOS_Matter__r != null ? te.NEOS_Matter__r.Name : '';
+                String matterId   = te.NEOS_Matter__c != null ? String.valueOf(te.NEOS_Matter__c) : '';
+                entries.add(new Map<String, Object>{
+                    'id'       => te.Id,
+                    'date'     => String.valueOf(te.Entry_Date__c),
+                    'hours'    => te.Submit_Hours__c,
+                    'notes'    => te.Notes__c,
+                    'matter'   => matterName,
+                    'matterId' => matterId
+                });
+            }
+            return entries;
+        } catch (Exception e) {
+            throw new AuraHandledException(e.getTypeName() + ': ' + e.getMessage());
+        }
+    }
+
     @AuraEnabled(cacheable=true)
     public static List<Map<String, Object>> getTeams() {
         List<Group> groups = [
@@ -333,7 +368,7 @@ public without sharing class TimeEntryDashboardController {
         for (Integer i = staffKeys.size() - 1; i >= 0; i--) {
             Id sid = (Id) staffKeys.get(i).split('\\|')[1];
             staffList.add(new Map<String, Object>{ 'value' => String.valueOf(sid), 'label' => staffNames.get(sid) });
-            byStaff.add(new Map<String, Object>{ 'name' => staffNames.get(sid), 'hours' => staffHrs.get(sid), 'count' => staffCnts.get(sid) });
+            byStaff.add(new Map<String, Object>{ 'id' => String.valueOf(sid), 'name' => staffNames.get(sid), 'hours' => staffHrs.get(sid), 'count' => staffCnts.get(sid) });
             Map<String, Decimal> sdm = staffDateHrs.containsKey(sid) ? staffDateHrs.get(sid) : new Map<String, Decimal>();
             List<String> sdKeys = new List<String>(sdm.keySet());
             sdKeys.sort();
@@ -359,9 +394,9 @@ public without sharing class TimeEntryDashboardController {
                 mKeys.add(String.valueOf(Math.max(0, (Long)(matterHrs.get(mid) * 100))).leftPad(14, '0') + '|' + mid);
             }
             mKeys.sort();
-            for (Integer i = mKeys.size() - 1; i >= 0 && byMatter.size() < 10; i--) {
+            for (Integer i = mKeys.size() - 1; i >= 0; i--) {
                 Id mid = (Id) mKeys.get(i).split('\\|')[1];
-                byMatter.add(new Map<String, Object>{ 'name' => matterNames.get(mid), 'hours' => matterHrs.get(mid), 'count' => matterCnts.get(mid) });
+                byMatter.add(new Map<String, Object>{ 'id' => String.valueOf(mid), 'name' => matterNames.get(mid), 'hours' => matterHrs.get(mid), 'count' => matterCnts.get(mid) });
             }
         }
 

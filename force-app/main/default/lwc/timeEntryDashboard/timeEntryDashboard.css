@@ -350,7 +350,7 @@
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-    max-width: 680px;
+    max-width: 780px;
     width: 90vw;
     max-height: 82vh;
     display: flex;
@@ -430,8 +430,46 @@
     box-shadow: 0 0 0 2px rgba(1,118,211,0.18);
 }
 .ted-export-link { display: none; }
+.ted-back-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    color: #0176d3;
+    padding: 0;
+    line-height: 1;
+    margin-bottom: 0.15rem;
+}
+.ted-back-btn:hover { text-decoration: underline; }
+.ted-drill-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
 .ted-drill-body {
     overflow-y: auto;
     flex: 1;
     min-height: 0;
 }
+.ted-drill-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1.25rem;
+    border-top: 1px solid #e5e5e5;
+    background: #fafaf9;
+    flex-shrink: 0;
+}
+.ted-drill-footer-label  { font-size: 0.75rem; color: #b0adab; }
+.ted-drill-footer-totals { font-size: 0.8125rem; font-weight: 700; color: #3e3e3c; }
+
+.chart-more-note {
+    font-size: 0.75rem;
+    color: #0176d3;
+    text-align: center;
+    padding: 0.4rem;
+    cursor: pointer;
+    border-top: 1px solid #f3f2f2;
+}
+.chart-more-note:hover { text-decoration: underline; }

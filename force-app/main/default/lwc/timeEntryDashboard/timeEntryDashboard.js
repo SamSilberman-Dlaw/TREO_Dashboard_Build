@@ -1,10 +1,12 @@
 import { LightningElement, api, track } from 'lwc';
+import { NavigationMixin } from 'lightning/navigation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { loadScript } from 'lightning/platformResourceLoader';
 import CHARTJS from '@salesforce/resourceUrl/ChartJS';
 import getAllChartData    from '@salesforce/apex/TimeEntryDashboardController.getAllChartData';
 import getAccurateTotals from '@salesforce/apex/TimeEntryDashboardController.getAccurateTotals';
 import getTeams          from '@salesforce/apex/TimeEntryDashboardController.getTeams';
+import getStaffEntries   from '@salesforce/apex/TimeEntryDashboardController.getStaffEntries';
 
 const CHART_COLORS = [
     '#0176d3', '#1b96ff', '#032d60', '#0e56c4',
@@ -22,7 +24,7 @@ const STAFF_COLORS = [
     '#7c3aed', '#c27400', '#0e56c4', '#1a7f3c'
 ];
 
-export default class TimeEntryDashboard extends LightningElement {
+export default class TimeEntryDashboard extends NavigationMixin(LightningElement) {
 
     @api recordId;
 
@@ -53,12 +55,16 @@ export default class TimeEntryDashboard extends LightningElement {
     prevTotalHours = 0;
     prevEntryCount = 0;
 
-    @track staffTruncated = false;
-    @track _drillOpen       = false;
-    @track _drillType       = '';
-    @track _drillSearch     = '';
-    @track _drillSortField  = 'hours';
-    @track _drillSortDir    = 'desc';
+    @track staffTruncated  = false;
+    @track _drillOpen         = false;
+    @track _drillType         = '';
+    @track _drillSearch       = '';
+    @track _drillSortField    = 'hours';
+    @track _drillSortDir      = 'desc';
+    @track _staffDrillOpen    = false;
+    @track _staffDrillName    = '';
+    @track _staffDrillEntries = [];
+    @track _staffDrillLoading = false;
     _byStaff                = [];
     _byMatter               = [];
     _byDate                 = [];
@@ -167,8 +173,41 @@ export default class TimeEntryDashboard extends LightningElement {
     }
 
     get prevPeriodLabel() {
-        const map = { '7': 'prev 7 days', '15': 'prev 15 days', '30': 'prev 30 days', '90': 'prev 90 days', 'mtd': 'prev month' };
+        const map = { '7': 'prev 7 days', '15': 'prev 15 days', '30': 'prev 30 days', '90': 'prev 90 days', 'mtd': 'prev month', 'thisweek': 'last week', 'lastweek': 'week before' };
         return map[this._activePreset] || 'prev period';
+    }
+
+    get mattersHiddenCount() {
+        return this.isHomeMode ? Math.max(0, this.matterCount - this._byMatter.length) : 0;
+    }
+    get hasHiddenMatters() {
+        return this.mattersHiddenCount > 0;
+    }
+
+    get staffDrillColumns() {
+        return [
+            { label: 'Date',   fieldName: 'date',      type: 'date-local', sortable: true,
+              typeAttributes: { year: 'numeric', month: 'short', day: 'numeric' } },
+            { label: 'Matter', fieldName: 'matterUrl', type: 'url', wrapText: true,
+              typeAttributes: { label: { fieldName: 'matter' }, target: '_blank' } },
+            { label: 'Hours',  fieldName: 'hours',     type: 'number', sortable: true,
+              typeAttributes: { minimumFractionDigits: 1, maximumFractionDigits: 1 },
+              cellAttributes: { alignment: 'left' } },
+            { label: 'Notes',  fieldName: 'notes',     wrapText: true }
+        ];
+    }
+
+    get staffDrillTotalHours() {
+        return (this._staffDrillEntries || [])
+            .reduce((s, e) => s + Number(e.hours || 0), 0).toFixed(1);
+    }
+
+    get drillTotals() {
+        const rows = this.drillRows;
+        return {
+            hours:   rows.reduce((s, r) => s + (r.hours || 0), 0).toFixed(1),
+            entries: rows.reduce((s, r) => s + (r.entries || 0), 0)
+        };
     }
 
     get totalHoursDelta()  { return this._computeDelta(this.totalHours,  this.prevTotalHours); }
@@ -199,12 +238,16 @@ export default class TimeEntryDashboard extends LightningElement {
     }
 
     get drillRows() {
-        const src = this._drillType === 'matters' ? this._byMatter : this._byStaff;
+        const src      = this._drillType === 'matters' ? this._byMatter : this._byStaff;
+        const totalHrs = (src || []).reduce((s, r) => s + Number(r.hours || 0), 0);
+        const isMatters = this._drillType === 'matters';
         let rows = (src || []).map((r, i) => ({
-            id:      String(i),
-            name:    r.name  || 'Unknown',
-            hours:   Number(r.hours || 0),
-            entries: Number(r.count || 0)
+            id:        r.id || String(i),
+            name:      r.name  || 'Unknown',
+            hours:     Number(r.hours || 0),
+            entries:   Number(r.count || 0),
+            pct:       totalHrs > 0 ? Number(((r.hours / totalHrs) * 100).toFixed(1)) : 0,
+            matterUrl: (isMatters && r.id) ? `/${r.id}` : null
         }));
         if (this._drillSearch) {
             const q = this._drillSearch.toLowerCase();
@@ -221,15 +264,26 @@ export default class TimeEntryDashboard extends LightningElement {
 
     get drillColumns() {
         const nameLabel  = this._drillType === 'matters' ? 'Matter' : 'Staff';
-        const hoursCol   = { label: 'Hours',   fieldName: 'hours',   type: 'number', sortable: true,
+        const hoursCol   = { label: 'Hours',    fieldName: 'hours',   type: 'number', sortable: true,
                              typeAttributes: { minimumFractionDigits: 1, maximumFractionDigits: 1 },
                              cellAttributes: { alignment: 'left' } };
-        const entriesCol = { label: 'Entries', fieldName: 'entries', type: 'number', sortable: true,
+        const entriesCol = { label: 'Entries',  fieldName: 'entries', type: 'number', sortable: true,
                              cellAttributes: { alignment: 'left' } };
+        const pctCol     = { label: '% Total',  fieldName: 'pct',     type: 'number', sortable: true,
+                             typeAttributes: { minimumFractionDigits: 1, maximumFractionDigits: 1 },
+                             cellAttributes: { alignment: 'left' } };
+        if (this._drillType === 'matters') {
+            return [
+                { label: nameLabel, fieldName: 'matterUrl', type: 'url', wrapText: true,
+                  typeAttributes: { label: { fieldName: 'name' }, target: '_blank' } },
+                hoursCol, entriesCol, pctCol
+            ];
+        }
+        const rowActions = [{ label: 'View Entries', name: 'entries' }, { label: 'Filter to Person', name: 'filter' }];
         return [
             { label: nameLabel, fieldName: 'name', sortable: true },
-            hoursCol,
-            entriesCol
+            hoursCol, entriesCol, pctCol,
+            { type: 'action', typeAttributes: { rowActions } }
         ];
     }
 
@@ -246,7 +300,64 @@ export default class TimeEntryDashboard extends LightningElement {
         this._drillOpen      = true;
     }
 
-    closeDrill() { this._drillOpen = false; }
+    closeDrill() {
+        this._drillOpen      = false;
+        this._staffDrillOpen = false;
+    }
+
+    handleDrillRowAction(e) {
+        const { action, row } = e.detail;
+        if (action.name === 'open' && row.id) {
+            this[NavigationMixin.Navigate]({
+                type: 'standard__recordPage',
+                attributes: { recordId: row.id, actionName: 'view' }
+            });
+            this.closeDrill();
+        } else if (action.name === 'filter') {
+            const match = this.staffOptions.find(o => o.label === row.name);
+            if (match) {
+                this.selectedStaffIds = [match.value];
+                this.selectedTeamId   = '';
+                this.viewMode         = 'all';
+                this.closeDrill();
+                this._load();
+            }
+        } else if (action.name === 'entries' && row.id) {
+            this._staffDrillName    = row.name;
+            this._staffDrillEntries = [];
+            this._staffDrillLoading = true;
+            this._staffDrillOpen    = true;
+            getStaffEntries({ staffId: row.id, startDate: this.startDate, endDate: this.endDate })
+                .then(data => {
+                    this._staffDrillEntries = (data || []).map(e => ({
+                        ...e,
+                        matterUrl: e.matterId ? `/${e.matterId}` : null
+                    }));
+                    this._staffDrillLoading = false;
+                })
+                .catch(() => { this._staffDrillLoading = false; });
+        }
+    }
+
+    closeStaffDrill() {
+        this._staffDrillOpen    = false;
+        this._staffDrillEntries = [];
+        this._staffDrillName    = '';
+    }
+
+    handleStaffDrillExport() {
+        const cols   = this.staffDrillColumns.filter(c => c.fieldName && c.fieldName !== 'matterUrl');
+        const header = ['Date', 'Matter', 'Hours', 'Notes'].join(',');
+        const body   = this._staffDrillEntries.map(e =>
+            [e.date || '', e.matter ? `"${e.matter}"` : '', e.hours || 0, e.notes ? `"${e.notes}"` : ''].join(',')
+        ).join('\n');
+        const datePart  = this._activePreset || `${this.startDate}-to-${this.endDate}`;
+        const firstName = this._staffDrillName.split(' ')[0];
+        const link = this.template.querySelector('.ted-export-link');
+        link.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(header + '\n' + body);
+        link.download = `entries-${firstName}-${datePart}.csv`;
+        link.click();
+    }
 
     handleDrillSort(e) {
         this._drillSortField = e.detail.fieldName;
@@ -267,11 +378,22 @@ export default class TimeEntryDashboard extends LightningElement {
                 return typeof v === 'string' && v.includes(',') ? `"${v}"` : v;
             }).join(',')
         ).join('\n');
+        const teamLabel  = this.selectedTeamId
+            ? ((this.teamOptions.find(o => o.value === this.selectedTeamId) || {}).label || '').replace(/\s+/g, '-')
+            : '';
+        const staffLabel = this.selectedStaffIds.length === 1
+            ? ((this.staffOptions.find(o => o.value === this.selectedStaffIds[0]) || {}).label || '').split(' ')[0]
+            : this.selectedStaffIds.length > 1 ? `${this.selectedStaffIds.length}-staff` : '';
+        const filterPart = teamLabel || staffLabel || (this.viewMode === 'mine' ? 'mine' : '');
+        const datePart   = this._activePreset || `${this.startDate}-to-${this.endDate}`;
+        const filename   = [this._drillType, filterPart, datePart].filter(Boolean).join('-') + '.csv';
         const link = this.template.querySelector('.ted-export-link');
         link.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(header + '\n' + body);
-        link.download = `${this._drillType}-breakdown.csv`;
+        link.download = filename;
         link.click();
     }
+
+    handleRefresh() { this._load(); }
 
     clearChartFilter() {
         this._chartStaffFilter  = null;
@@ -308,11 +430,13 @@ export default class TimeEntryDashboard extends LightningElement {
     get btnMine() { return 'preset-btn' + (this.viewMode === 'mine' ? ' preset-btn--active' : ''); }
     get isAllView() { return this.viewMode === 'all'; }
 
-    get btn7d()  { return this._presetClass('7'); }
-    get btn15d() { return this._presetClass('15'); }
-    get btn30d() { return this._presetClass('30'); }
-    get btn90d() { return this._presetClass('90'); }
-    get btnMtd() { return this._presetClass('mtd'); }
+    get btn7d()       { return this._presetClass('7'); }
+    get btn15d()      { return this._presetClass('15'); }
+    get btn30d()      { return this._presetClass('30'); }
+    get btn90d()      { return this._presetClass('90'); }
+    get btnMtd()      { return this._presetClass('mtd'); }
+    get btnThisWeek() { return this._presetClass('thisweek'); }
+    get btnLastWeek() { return this._presetClass('lastweek'); }
 
     _presetClass(p) {
         return 'preset-btn' + (this._activePreset === p ? ' preset-btn--active' : '');
@@ -330,8 +454,25 @@ export default class TimeEntryDashboard extends LightningElement {
     _applyPreset(p) {
         const today = new Date();
         const fmt = d => d.toISOString().slice(0, 10);
+        if (p === 'thisweek') {
+            const dow = today.getDay();
+            const mon = new Date(today);
+            mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+            this.startDate = fmt(mon);
+            this.endDate   = fmt(today);
+            return;
+        }
+        if (p === 'lastweek') {
+            const dow = today.getDay();
+            const lastMon = new Date(today);
+            lastMon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) - 7);
+            const lastSun = new Date(lastMon);
+            lastSun.setDate(lastMon.getDate() + 6);
+            this.startDate = fmt(lastMon);
+            this.endDate   = fmt(lastSun);
+            return;
+        }
         this.endDate = fmt(today);
-
         if (p === 'mtd') {
             this.startDate = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
         } else if (p === 'ytd') {
@@ -526,7 +667,7 @@ export default class TimeEntryDashboard extends LightningElement {
             this.isHomeMode ? (data.byMatter || []) : (data.byStaff || [])
         );
         if (this.isHomeMode) {
-            this._renderHBar(data.byMatter || []);
+            this._renderHBar((data.byMatter || []).slice(0, 10));
         }
     }
 
@@ -589,10 +730,21 @@ export default class TimeEntryDashboard extends LightningElement {
                 responsive: true,
                 maintainAspectRatio: false,
                 onHover: (event, elements) => {
-                    event.native.target.style.cursor = (!this.isHomeMode && elements.length) ? 'pointer' : 'default';
+                    event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
                 },
                 onClick: (_event, elements) => {
-                    if (this.isHomeMode || !elements.length) return;
+                    if (!elements.length) return;
+                    if (this.isHomeMode) {
+                        const clickedName = byStaff[elements[0].index].name;
+                        const match = this.staffOptions.find(o => o.label === clickedName);
+                        if (match) {
+                            const alreadySelected = this.selectedStaffIds.length === 1 && this.selectedStaffIds[0] === match.value;
+                            this.selectedStaffIds = alreadySelected ? [] : [match.value];
+                            this.selectedTeamId   = '';
+                            this._load();
+                        }
+                        return;
+                    }
                     const label = byStaff[elements[0].index].name;
                     this._chartStaffFilter  = this._chartStaffFilter === label ? null : label;
                     this._chartMatterFilter = null;
