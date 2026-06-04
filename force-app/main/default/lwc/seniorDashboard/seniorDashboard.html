@@ -166,17 +166,17 @@
                                                     </span>
                                                 </template>
                                                 <span class={m.lastEntryClass}>
-                                                    Last entry: {m.lastEntryLabel}
+                                                    {m.lastEntryLabel}
                                                 </span>
                                                 <template if:true={m.hasOverdue}>
                                                     <span class="sd-matter-overdue">
-                                                        {m.overdueTasks} overdue task(s)
+                                                        {m.overdueLabel}
                                                     </span>
                                                 </template>
                                                 <template if:false={m.hasOverdue}>
                                                     <template if:true={m.openTasks}>
                                                         <span class="sd-matter-tasks">
-                                                            {m.openTasks} open task(s)
+                                                            {m.openTasksLabel}
                                                         </span>
                                                     </template>
                                                 </template>

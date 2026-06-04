@@ -175,6 +175,8 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
                 lastEntryClass:  lastEntryCls,
                 hasDeadline:     !!dl,
                 hasOverdue:      m.overdueTasks > 0,
+                overdueLabel:    m.overdueTasks === 1 ? '1 overdue task' : `${m.overdueTasks} overdue tasks`,
+                openTasksLabel:  m.openTasks === 1    ? '1 open task'    : `${m.openTasks} open tasks`,
                 hasTeamLabel:    labelParts.length > 0,
                 teamLabel:       labelParts.join(' · '),
                 teamLabelFull:   fullParts.join(' · '),
