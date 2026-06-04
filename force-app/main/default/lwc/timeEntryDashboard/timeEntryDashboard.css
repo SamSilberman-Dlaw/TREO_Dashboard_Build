@@ -175,6 +175,7 @@
     border-radius: 6px;
     padding: 0.75rem 1rem;
     text-align: center;
+    position: relative;
 }
 
 .summary-value {
@@ -255,10 +256,18 @@
 }
 
 .date-range-label {
-    font-size: 0.75rem;
-    color: #706e6b;
+    font-size: 0.8125rem;
+    color: #3e3e3c;
+    font-weight: 500;
     padding-top: 0.4rem;
-    text-align: right;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.filter-context {
+    font-size: 0.75rem;
+    color: #0176d3;
+    font-weight: 600;
 }
 
 .entry-table-title {
@@ -327,6 +336,16 @@
 .summary-card--clickable {
     cursor: pointer;
     transition: filter 0.1s, transform 0.1s, box-shadow 0.1s;
+    border-top: 3px solid #0176d3;
+}
+.summary-card--clickable::after {
+    content: '↗';
+    position: absolute;
+    top: 0.35rem;
+    right: 0.5rem;
+    font-size: 0.625rem;
+    color: #b0adab;
+    line-height: 1;
 }
 .summary-card--clickable:hover {
     filter: brightness(0.95);

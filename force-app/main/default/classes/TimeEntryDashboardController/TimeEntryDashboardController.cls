@@ -22,7 +22,7 @@ public without sharing class TimeEntryDashboardController {
                 WHERE Staff__c = :sid
                   AND Entry_Date__c >= :startD AND Entry_Date__c <= :endD
                 ORDER BY Entry_Date__c DESC
-                LIMIT 200
+                LIMIT 2000
             ]) {
                 String matterName = te.NEOS_Matter__r != null ? te.NEOS_Matter__r.Name : '';
                 String matterId   = te.NEOS_Matter__c != null ? String.valueOf(te.NEOS_Matter__c) : '';
@@ -356,19 +356,33 @@ public without sharing class TimeEntryDashboardController {
             }
         }
 
-        // byStaff — sorted desc by hours, top 20
+        // byStaff — accurate aggregate query (not subject to 45K row cap)
+        List<Map<String, Object>> byStaff      = new List<Map<String, Object>>();
+        List<Map<String, Object>> staffList    = new List<Map<String, Object>>();
+        List<Map<String, Object>> byStaffByDate = new List<Map<String, Object>>();
+        {
+            String aggQ =
+                'SELECT Staff__c sid, Staff__r.Name sname, SUM(Submit_Hours__c) hrs, COUNT(Id) cnt ' +
+                'FROM Time_Entry__c WHERE Entry_Date__c >= :startD AND Entry_Date__c <= :endD ' +
+                'AND Staff__c != null';
+            if (scopedToMatter) aggQ += ' AND NEOS_Matter__c = :matterId';
+            if (filterStaff)    aggQ += ' AND Staff__c IN :staffIdSet';
+            aggQ += ' GROUP BY Staff__c, Staff__r.Name ORDER BY SUM(Submit_Hours__c) DESC LIMIT 200';
+            for (AggregateResult ar : Database.query(aggQ)) {
+                Id   sid   = (Id)     ar.get('sid');
+                String nm  = (String) ar.get('sname');
+                staffList.add(new Map<String, Object>{ 'value' => String.valueOf(sid), 'label' => nm });
+                byStaff.add(new Map<String, Object>{ 'id' => String.valueOf(sid), 'name' => nm, 'hours' => ar.get('hrs'), 'count' => ar.get('cnt') });
+            }
+        }
+        // byStaffByDate — still built from raw rows (for per-day breakdown in consistency view)
         List<String> staffKeys = new List<String>();
         for (Id sid : staffHrs.keySet()) {
             staffKeys.add(String.valueOf(Math.max(0, (Long)(staffHrs.get(sid) * 100))).leftPad(14, '0') + '|' + sid);
         }
         staffKeys.sort();
-        List<Map<String, Object>> byStaff      = new List<Map<String, Object>>();
-        List<Map<String, Object>> staffList    = new List<Map<String, Object>>();
-        List<Map<String, Object>> byStaffByDate = new List<Map<String, Object>>();
         for (Integer i = staffKeys.size() - 1; i >= 0; i--) {
             Id sid = (Id) staffKeys.get(i).split('\\|')[1];
-            staffList.add(new Map<String, Object>{ 'value' => String.valueOf(sid), 'label' => staffNames.get(sid) });
-            byStaff.add(new Map<String, Object>{ 'id' => String.valueOf(sid), 'name' => staffNames.get(sid), 'hours' => staffHrs.get(sid), 'count' => staffCnts.get(sid) });
             Map<String, Decimal> sdm = staffDateHrs.containsKey(sid) ? staffDateHrs.get(sid) : new Map<String, Decimal>();
             List<String> sdKeys = new List<String>(sdm.keySet());
             sdKeys.sort();

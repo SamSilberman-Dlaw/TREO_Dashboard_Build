@@ -14,13 +14,15 @@
                 <div class="preset-group">
                     <button type="button" class={btnThisWeek} onclick={setPreset} data-preset="thisweek">This Wk</button>
                     <button type="button" class={btnLastWeek} onclick={setPreset} data-preset="lastweek">Last Wk</button>
-                    <button type="button" class={btn7d}       onclick={setPreset} data-preset="7">7 Days</button>
-                    <button type="button" class={btn15d}      onclick={setPreset} data-preset="15">15 Days</button>
-                    <button type="button" class={btn30d}      onclick={setPreset} data-preset="30">30 Days</button>
-                    <button type="button" class={btn90d}      onclick={setPreset} data-preset="90">90 Days</button>
-                    <button type="button" class={btnMtd}      onclick={setPreset} data-preset="mtd">MTD</button>
-                    <button type="button" class="preset-btn" onclick={handleRefresh} title="Refresh">↻</button>
                 </div>
+                <div class="preset-group">
+                    <button type="button" class={btn7d}  onclick={setPreset} data-preset="7">7 Days</button>
+                    <button type="button" class={btn15d} onclick={setPreset} data-preset="15">15 Days</button>
+                    <button type="button" class={btn30d} onclick={setPreset} data-preset="30">30 Days</button>
+                    <button type="button" class={btn90d} onclick={setPreset} data-preset="90">90 Days</button>
+                    <button type="button" class={btnMtd} onclick={setPreset} data-preset="mtd">MTD</button>
+                </div>
+                <button type="button" class="preset-btn" onclick={handleRefresh} title="Refresh">↻</button>
 
                 <div class="date-inputs">
                     <lightning-input
@@ -85,7 +87,12 @@
                     </template>
                 </template>
             </div>
-            <div class="date-range-label">{dateRangeLabel}</div>
+            <div class="date-range-label">
+                {dateRangeLabel}
+                <template if:true={hasActiveFilterLabel}>
+                    <span class="filter-context">{activeFilterLabel}</span>
+                </template>
+            </div>
 
         </div>
 
@@ -201,6 +208,7 @@
                                         <button type="button" class="chart-filter-clear" onclick={clearChartFilter}>&#x2715;</button>
                                     </div>
                                 </template>
+                                <button type="button" class="ted-export-btn" onclick={handleEntryTableExport} title="Download CSV">↓ CSV</button>
                             </div>
                             <lightning-datatable
                                 key-field="id"
@@ -284,12 +292,14 @@
 
             <!-- Main drill -->
             <template if:false={_staffDrillOpen}>
-                <div class="ted-drill-search">
-                    <input type="text" class="ted-drill-search-input"
-                           placeholder="Search..."
-                           value={_drillSearch}
-                           oninput={handleDrillSearch} />
-                </div>
+                <template if:true={showDrillSearch}>
+                    <div class="ted-drill-search">
+                        <input type="text" class="ted-drill-search-input"
+                               placeholder="Search..."
+                               value={_drillSearch}
+                               oninput={handleDrillSearch} />
+                    </div>
+                </template>
                 <div class="ted-drill-body">
                     <lightning-datatable
                         key-field="id"
@@ -303,8 +313,8 @@
                     </lightning-datatable>
                 </div>
                 <div class="ted-drill-footer">
-                    <span class="ted-drill-footer-label">Showing {drillRows.length} rows</span>
-                    <span class="ted-drill-footer-totals">{drillTotals.hours}h · {drillTotals.entries} entries</span>
+                    <span class="ted-drill-footer-label">Showing {drillTotals.label}</span>
+                    <span class="ted-drill-footer-totals">{drillFooterRight}</span>
                 </div>
             </template>
         </div>
