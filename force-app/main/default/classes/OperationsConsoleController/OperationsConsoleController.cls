@@ -359,7 +359,10 @@ public without sharing class OperationsConsoleController {
             SELECT Id, Name
             FROM User
             WHERE IsActive = true
+              AND Id NOT IN (SELECT UserId FROM UserLogin WHERE IsFrozen = true)
               AND (Profile.Name IN ('TREO Service Agent', 'TREO Service Supervisor')
+                   OR UserRole.Name LIKE '%Attorney%'
+                   OR UserRole.Name LIKE '%Counsel%'
                    OR Email = 'emil@d.law'
                    OR Id = :currentUserId)
             ORDER BY Name ASC

@@ -107,11 +107,6 @@
 
                 </div>
 
-                <!-- ── Date Context ── -->
-                <div class="sd-date-bar slds-var-p-horizontal_medium">
-                    <span class="sd-date-label">{todayLabel}</span>
-                </div>
-
                 <!-- ── Main Content Grid ── -->
                 <div class="sd-content slds-var-p-horizontal_medium slds-var-p-bottom_medium">
 
@@ -138,6 +133,12 @@
                                     <span class="sd-filter-count">{fb.count}</span>
                                 </button>
                             </template>
+                            <template if:true={hasTeamMemberFilter}>
+                                <button type="button" class="sd-filter-btn sd-filter-btn--person-active"
+                                        onclick={clearTeamMemberFilter}>
+                                    {teamMemberFilterFirstName} ×
+                                </button>
+                            </template>
                         </div>
 
                         <!-- Matter list -->
@@ -155,7 +156,7 @@
                                                 </template>
                                             </div>
                                             <template if:true={m.hasTeamLabel}>
-                                                <div class="sd-matter-team" title={m.teamLabel}>{m.teamLabel}</div>
+                                                <div class="sd-matter-team" title={m.teamLabelFull}>{m.teamLabel}</div>
                                             </template>
                                             <div class="sd-matter-meta">
                                                 <template if:true={m.hasDeadline}>
@@ -200,10 +201,11 @@
 
                         <div class="sd-team-list">
                             <template if:true={hasTeamStats}>
-                                <template for:each={teamStats} for:item="s">
-                                    <div key={s.id} class={s.rowClass}>
+                                <template for:each={displayTeamStats} for:item="s">
+                                    <div key={s.id} class={s.rowClass}
+                                         data-name={s.name} onclick={handleTeamRowClick}>
 
-                                        <div class={s.avatarClass}>{s.initials}</div>
+                                        <div class={s.avatarClass} style={s.avatarStyle}>{s.initials}</div>
 
                                         <div class="sd-team-info">
                                             <div class="sd-team-name">{s.name}</div>
@@ -213,6 +215,9 @@
                                         <div class="sd-team-nums">
                                             <div class={s.hoursClass}>
                                                 {s.hoursDisplay}h today
+                                            </div>
+                                            <div class="sd-team-bar">
+                                                <div class={s.hoursBarClass} style={s.hoursBarStyle}></div>
                                             </div>
                                             <div class={s.weekClass}>
                                                 {s.weekDisplay}h this week
@@ -266,7 +271,7 @@
                                     <div key={member.id} class="sd-chart-member-block">
                                         <div class="sd-chart-row">
                                             <div class="sd-chart-who">
-                                                <div class="sd-chart-avatar">{member.initials}</div>
+                                                <div class="sd-chart-avatar" style={member.avatarStyle}>{member.initials}</div>
                                                 <span class="sd-chart-name">{member.firstName}</span>
                                             </div>
                                             <div class="sd-chart-bar-area">

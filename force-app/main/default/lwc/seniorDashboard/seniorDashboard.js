@@ -20,6 +20,10 @@ const STAGE_COLORS = [
     '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444',
     '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
 ];
+const AVATAR_COLORS = [
+    '#0176d3', '#2e844a', '#8B5CF6', '#EA580C', '#0891B2',
+    '#B45309', '#DB2777', '#9333EA', '#65A30D', '#DC2626'
+];
 
 export default class SeniorDashboard extends NavigationMixin(LightningElement) {
 
@@ -31,9 +35,10 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     @track matterFilter      = 'all';
     @track matterSort        = 'status';
     @track lastRefreshLabel  = '';
-    @track execDropdownOpen   = false;
-    @track execDropdownStyle  = '';
-    @track teamList           = [];
+    @track execDropdownOpen    = false;
+    @track execDropdownStyle   = '';
+    @track teamList            = [];
+    @track _teamMemberFilter   = null;
 
     matterCount          = 0;
     upcomingDeadlines    = 0;
@@ -145,6 +150,17 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
                                : stale     ? 'sd-matter-entry sd-matter-entry--stale'
                                :             'sd-matter-entry';
             const resolvedStatus = (m.status === 'caution') ? 'atrisk' : m.status;
+            const srName    = m.seniorAttorneyName || '';
+            const assocName = m.associateName      || '';
+            const lssName   = m.lssName            || '';
+            const labelParts = [];
+            if (srName)    labelParts.push(`Sr: ${srName.split(' ')[0]}`);
+            if (assocName) labelParts.push(`Assoc: ${assocName.split(' ')[0]}`);
+            if (lssName)   labelParts.push(`LSS: ${lssName.split(' ')[0]}`);
+            const fullParts = [];
+            if (srName)    fullParts.push(`Senior Attorney: ${srName}`);
+            if (assocName) fullParts.push(`Associate: ${assocName}`);
+            if (lssName)   fullParts.push(`LSS/Paralegal: ${lssName}`);
             return {
                 ...m,
                 status:          resolvedStatus,
@@ -159,15 +175,16 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
                 lastEntryClass:  lastEntryCls,
                 hasDeadline:     !!dl,
                 hasOverdue:      m.overdueTasks > 0,
-                hasTeamLabel:    !!(m.associateName || m.lssName),
-                teamLabel:       [m.associateName, m.lssName].filter(Boolean).join(' · '),
+                hasTeamLabel:    labelParts.length > 0,
+                teamLabel:       labelParts.join(' · '),
+                teamLabelFull:   fullParts.join(' · '),
                 hasRecordType:   !!m.recordType
             };
         });
     }
 
     _processTeamStats(rows) {
-        return rows.map(s => {
+        return rows.map((s, idx) => {
             const hrs    = Number(s.hoursToday) || 0;
             const status = hrs > 0 ? 'ontrack' : 'behind';
             const parts  = String(s.name || '').split(' ');
@@ -175,6 +192,7 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
                 + (parts.length > 1 ? parts[parts.length - 1].slice(0, 1) : '')).toUpperCase();
             const weekHrs = Number(s.hoursWeek) || 0;
             const overdueTasks = Number(s.overdueTasks) || 0;
+            const barPct = Math.min((hrs / 8) * 100, 100);
             return {
                 ...s,
                 hoursDisplay:  hrs.toFixed(1),
@@ -182,6 +200,9 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
                 hoursClass:    `sd-team-hours-today sd-team-hours-today--${status}`,
                 weekClass:     `sd-team-hours-week${weekHrs > 0 ? ' sd-team-hours-week--active' : ''}`,
                 avatarClass:   'sd-team-avatar',
+                avatarStyle:   `background:${AVATAR_COLORS[idx % AVATAR_COLORS.length]}`,
+                hoursBarStyle: `width:${barPct.toFixed(1)}%`,
+                hoursBarClass: `sd-team-bar-fill${hrs >= 8 ? ' sd-team-bar-fill--full' : hrs > 0 ? ' sd-team-bar-fill--partial' : ''}`,
                 overdueTip:    `${overdueTasks} overdue task${overdueTasks !== 1 ? 's' : ''} on their matters`,
                 initials
             };
@@ -189,9 +210,16 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     }
 
     _applyMatterFilter() {
-        const filtered = this.matterFilter === 'all'
+        let filtered = this.matterFilter === 'all'
             ? [...this._rawMatterHealth]
             : this._rawMatterHealth.filter(m => m.status === this.matterFilter);
+        if (this._teamMemberFilter) {
+            filtered = filtered.filter(m =>
+                m.seniorAttorneyName === this._teamMemberFilter ||
+                m.associateName === this._teamMemberFilter ||
+                m.lssName === this._teamMemberFilter
+            );
+        }
         this.matterHealth = this._sortMatters(filtered);
     }
 
@@ -224,7 +252,7 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     _buildChartRows() {
         const stageOrder = this.chartStageOrder;
         const maxTotal   = Math.max(...this._rawChartMembers.map(m => m.total || 0), 1);
-        this.chartMembers = this._rawChartMembers.map(m => {
+        this.chartMembers = this._rawChartMembers.map((m, idx) => {
             const total    = m.total || 0;
             const barPct   = (total / maxTotal) * 100;
             const segments = (m.segments || []).map(seg => {
@@ -249,6 +277,7 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
                 ...m,
                 segments,
                 barStyle:      `width:${barPct.toFixed(1)}%`,
+                avatarStyle:   `background:${AVATAR_COLORS[idx % AVATAR_COLORS.length]}`,
                 hasSegments:   segments.length > 0,
                 showDrill,
                 drillTitle:    showDrill ? `${m.firstName} — ${this._activeDrillStage} (${drillMatters.length})` : '',
@@ -353,6 +382,11 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
         const total  = this._rawMatterHealth.length;
         const atRisk = this._rawMatterHealth.filter(m => m.status === 'atrisk').length;
         const name   = this.teamGroupName || 'Team';
+        if (this._teamMemberFilter) {
+            const firstName = this._teamMemberFilter.split(' ')[0];
+            const suffix    = this.matterFilter !== 'all' ? ` · ${FILTER_LABELS[this.matterFilter]}` : '';
+            return `${name} Matters — ${firstName}'s (${n})${suffix}`;
+        }
         if (this.matterFilter !== 'all') {
             return `${name} Matters — ${FILTER_LABELS[this.matterFilter]} (${n} of ${total})`;
         }
@@ -384,7 +418,27 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
 
     get emptyMatterMessage() {
         if (this._rawMatterHealth.length === 0) return 'No matters found for your team.';
+        if (this._teamMemberFilter) {
+            const firstName = this._teamMemberFilter.split(' ')[0];
+            return `No matters found for ${firstName}.`;
+        }
         return `No ${FILTER_LABELS[this.matterFilter].toLowerCase()} matters.`;
+    }
+
+    get displayTeamStats() {
+        if (!this._teamMemberFilter) return this.teamStats;
+        return this.teamStats.map(s => ({
+            ...s,
+            rowClass: s.rowClass + (s.name === this._teamMemberFilter
+                ? ' sd-team-row--selected'
+                : ' sd-team-row--dimmed')
+        }));
+    }
+
+    get hasTeamMemberFilter() { return !!this._teamMemberFilter; }
+
+    get teamMemberFilterFirstName() {
+        return this._teamMemberFilter ? this._teamMemberFilter.split(' ')[0] : '';
     }
 
     /* ── Handlers ── */
@@ -406,14 +460,16 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
 
     handleViewAsTeam(e) {
         const group = e.currentTarget.dataset.group;
-        this._viewAsGroupName = group;
-        this.execDropdownOpen = false;
+        this._viewAsGroupName  = group;
+        this._teamMemberFilter = null;
+        this.execDropdownOpen  = false;
         this._load();
     }
 
     handleResetToOwn() {
-        this._viewAsGroupName = null;
-        this.execDropdownOpen = false;
+        this._viewAsGroupName  = null;
+        this._teamMemberFilter = null;
+        this.execDropdownOpen  = false;
         this._load();
     }
 
@@ -430,6 +486,17 @@ export default class SeniorDashboard extends NavigationMixin(LightningElement) {
     handleUpcomingClick() {
         if (!this.upcomingDeadlines) return;
         this.matterFilter = 'atrisk';
+        this._applyMatterFilter();
+    }
+
+    handleTeamRowClick(e) {
+        const name = e.currentTarget.dataset.name;
+        this._teamMemberFilter = this._teamMemberFilter === name ? null : name;
+        this._applyMatterFilter();
+    }
+
+    clearTeamMemberFilter() {
+        this._teamMemberFilter = null;
         this._applyMatterFilter();
     }
 

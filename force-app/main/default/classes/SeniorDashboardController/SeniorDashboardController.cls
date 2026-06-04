@@ -112,6 +112,7 @@ public without sharing class SeniorDashboardController {
                 ? new List<NEOS_Matter__c>()
                 : [
                     SELECT Id, Name, CourtJurisdiction__c, RecordType.Name,
+                           Senior_Attorney__c, Senior_Attorney__r.Name,
                            Associate_Attorney__c, Associate_Attorney__r.Name,
                            Associate_Attorney__r.FirstName,
                            LSS_Paralegal__c, LSS_Paralegal__r.Name,
@@ -213,16 +214,18 @@ public without sharing class SeniorDashboardController {
                                   || openTasks > 0 || deadlineCaution)
                                  ? 'atrisk' : 'ontrack';
 
-                String assocName = m.Associate_Attorney__r != null ? m.Associate_Attorney__r.Name : '';
-                String lssName   = m.LSS_Paralegal__r      != null ? m.LSS_Paralegal__r.Name      : '';
+                String seniorName = m.Senior_Attorney__r    != null ? m.Senior_Attorney__r.Name    : '';
+                String assocName  = m.Associate_Attorney__r != null ? m.Associate_Attorney__r.Name : '';
+                String lssName    = m.LSS_Paralegal__r      != null ? m.LSS_Paralegal__r.Name      : '';
 
                 matterHealth.add(new Map<String, Object>{
-                    'id'             => m.Id,
-                    'name'           => m.Name,
-                    'jurisdiction'   => m.CourtJurisdiction__c != null ? m.CourtJurisdiction__c : '',
-                    'recordType'     => m.RecordType != null ? m.RecordType.Name : '',
-                    'associateName'  => assocName,
-                    'lssName'        => lssName,
+                    'id'                  => m.Id,
+                    'name'                => m.Name,
+                    'jurisdiction'        => m.CourtJurisdiction__c != null ? m.CourtJurisdiction__c : '',
+                    'recordType'          => m.RecordType != null ? m.RecordType.Name : '',
+                    'seniorAttorneyName'  => seniorName,
+                    'associateName'       => assocName,
+                    'lssName'             => lssName,
                     'lastEntryDate'  => lastEntry != null ? String.valueOf(lastEntry) : '',
                     'noRecentEntry'  => noRecentEntry,
                     'openTasks'      => openTasks,
