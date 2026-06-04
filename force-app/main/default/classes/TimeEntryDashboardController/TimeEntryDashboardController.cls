@@ -333,9 +333,7 @@ public without sharing class TimeEntryDashboardController {
         for (Integer i = staffKeys.size() - 1; i >= 0; i--) {
             Id sid = (Id) staffKeys.get(i).split('\\|')[1];
             staffList.add(new Map<String, Object>{ 'value' => String.valueOf(sid), 'label' => staffNames.get(sid) });
-            if (byStaff.size() < 20) {
-                byStaff.add(new Map<String, Object>{ 'name' => staffNames.get(sid), 'hours' => staffHrs.get(sid), 'count' => staffCnts.get(sid) });
-            }
+            byStaff.add(new Map<String, Object>{ 'name' => staffNames.get(sid), 'hours' => staffHrs.get(sid), 'count' => staffCnts.get(sid) });
             Map<String, Decimal> sdm = staffDateHrs.containsKey(sid) ? staffDateHrs.get(sid) : new Map<String, Decimal>();
             List<String> sdKeys = new List<String>(sdm.keySet());
             sdKeys.sort();

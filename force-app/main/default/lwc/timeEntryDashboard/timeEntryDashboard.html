@@ -229,18 +229,34 @@
         <div class="ted-drill-overlay" onclick={closeDrill}></div>
         <div class="ted-drill-modal">
             <div class="ted-drill-hdr">
-                <span class="ted-drill-title">{drillTitle}</span>
-                <button type="button" class="ted-drill-close" onclick={closeDrill}>✕</button>
+                <div class="ted-drill-hdr-left">
+                    <span class="ted-drill-title">{drillTitle}</span>
+                    <span class="ted-drill-subtitle">{drillSubtitle}</span>
+                </div>
+                <div class="ted-drill-hdr-right">
+                    <button type="button" class="ted-export-btn" onclick={handleDrillExport} title="Download CSV">↓ CSV</button>
+                    <button type="button" class="ted-drill-close" onclick={closeDrill}>✕</button>
+                </div>
+            </div>
+            <div class="ted-drill-search">
+                <input type="text" class="ted-drill-search-input"
+                       placeholder="Search..."
+                       value={_drillSearch}
+                       oninput={handleDrillSearch} />
             </div>
             <div class="ted-drill-body">
                 <lightning-datatable
                     key-field="id"
                     data={drillRows}
                     columns={drillColumns}
+                    sorted-by={_drillSortField}
+                    sorted-direction={_drillSortDir}
+                    onsort={handleDrillSort}
                     hide-checkbox-column>
                 </lightning-datatable>
             </div>
         </div>
+        <a class="ted-export-link" aria-hidden="true"></a>
     </template>
 
 </template>

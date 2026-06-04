@@ -54,10 +54,14 @@ export default class TimeEntryDashboard extends LightningElement {
     prevEntryCount = 0;
 
     @track staffTruncated = false;
-    @track _drillOpen  = false;
-    @track _drillType  = '';
-    _byStaff           = [];
-    _byMatter          = [];
+    @track _drillOpen       = false;
+    @track _drillType       = '';
+    @track _drillSearch     = '';
+    @track _drillSortField  = 'hours';
+    @track _drillSortDir    = 'desc';
+    _byStaff                = [];
+    _byMatter               = [];
+    _byDate                 = [];
 
     _activePreset      = '30';
     _chartjsLoaded     = false;
@@ -185,40 +189,89 @@ export default class TimeEntryDashboard extends LightningElement {
         return `${map[this._drillType] || ''} · ${this.dateRangeLabel}`;
     }
 
+    get drillSubtitle() {
+        const src = this._drillType === 'matters' ? this._byMatter : this._byStaff;
+        const totalH = (src || []).reduce((s, r) => s + Number(r.hours || 0), 0);
+        const totalE = (src || []).reduce((s, r) => s + Number(r.count || 0), 0);
+        const count  = (src || []).length;
+        const label  = this._drillType === 'matters' ? 'matters' : 'staff';
+        return `${count} ${label} · ${totalH.toFixed(1)}h · ${totalE} entries`;
+    }
+
     get drillRows() {
-        const src  = this._drillType === 'matters' ? this._byMatter : this._byStaff;
-        const rows = (src || []).map((r, i) => ({
+        const src = this._drillType === 'matters' ? this._byMatter : this._byStaff;
+        let rows = (src || []).map((r, i) => ({
             id:      String(i),
             name:    r.name  || 'Unknown',
             hours:   Number(r.hours || 0),
             entries: Number(r.count || 0)
         }));
-        return this._drillType === 'entries'
-            ? rows.slice().sort((a, b) => b.entries - a.entries)
-            : rows.slice().sort((a, b) => b.hours   - a.hours);
+        if (this._drillSearch) {
+            const q = this._drillSearch.toLowerCase();
+            rows = rows.filter(r => (r.name || '').toLowerCase().includes(q));
+        }
+        const field = this._drillSortField || 'hours';
+        const dir   = this._drillSortDir === 'asc' ? 1 : -1;
+        return rows.slice().sort((a, b) => {
+            const av = a[field] ?? '';
+            const bv = b[field] ?? '';
+            return av < bv ? -dir : av > bv ? dir : 0;
+        });
     }
 
     get drillColumns() {
-        const hoursCol   = { label: 'Hours',   fieldName: 'hours',   type: 'number',
+        const nameLabel  = this._drillType === 'matters' ? 'Matter' : 'Staff';
+        const hoursCol   = { label: 'Hours',   fieldName: 'hours',   type: 'number', sortable: true,
                              typeAttributes: { minimumFractionDigits: 1, maximumFractionDigits: 1 },
                              cellAttributes: { alignment: 'left' } };
-        const entriesCol = { label: 'Entries', fieldName: 'entries', type: 'number',
+        const entriesCol = { label: 'Entries', fieldName: 'entries', type: 'number', sortable: true,
                              cellAttributes: { alignment: 'left' } };
-        if (this._drillType === 'matters') {
-            return [{ label: 'Matter', fieldName: 'name' }, hoursCol, entriesCol];
-        }
         return [
-            { label: 'Staff', fieldName: 'name' },
+            { label: nameLabel, fieldName: 'name', sortable: true },
             hoursCol,
             entriesCol
         ];
     }
 
-    handleHoursCardClick()   { this._drillType = 'hours';   this._drillOpen = true; }
-    handleEntriesCardClick() { this._drillType = 'entries'; this._drillOpen = true; }
-    handleMattersCardClick() { this._drillType = 'matters'; this._drillOpen = true; }
-    handleStaffCardClick()   { this._drillType = 'staff';   this._drillOpen = true; }
-    closeDrill()             { this._drillOpen = false; }
+    handleHoursCardClick()   { this._openDrill('hours'); }
+    handleEntriesCardClick() { this._openDrill('entries'); }
+    handleMattersCardClick() { this._openDrill('matters'); }
+    handleStaffCardClick()   { this._openDrill('staff'); }
+
+    _openDrill(type) {
+        this._drillType      = type;
+        this._drillSearch    = '';
+        this._drillSortField = 'hours';
+        this._drillSortDir   = 'desc';
+        this._drillOpen      = true;
+    }
+
+    closeDrill() { this._drillOpen = false; }
+
+    handleDrillSort(e) {
+        this._drillSortField = e.detail.fieldName;
+        this._drillSortDir   = e.detail.sortDirection;
+    }
+
+    handleDrillSearch(e) {
+        this._drillSearch = e.target.value;
+    }
+
+    handleDrillExport() {
+        const cols = this.drillColumns;
+        const rows = this.drillRows;
+        const header = cols.map(c => c.label).join(',');
+        const body   = rows.map(r =>
+            cols.map(c => {
+                const v = r[c.fieldName] ?? '';
+                return typeof v === 'string' && v.includes(',') ? `"${v}"` : v;
+            }).join(',')
+        ).join('\n');
+        const link = this.template.querySelector('.ted-export-link');
+        link.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(header + '\n' + body);
+        link.download = `${this._drillType}-breakdown.csv`;
+        link.click();
+    }
 
     clearChartFilter() {
         this._chartStaffFilter  = null;
@@ -405,6 +458,7 @@ export default class TimeEntryDashboard extends LightningElement {
                 this.matterCount    = data.matterCount;
                 this._byStaff       = data.byStaff  || [];
                 this._byMatter      = data.byMatter || [];
+                this._byDate        = data.byDate   || [];
 
                 this.barHasData   = data.byStaff.length > 0;
                 this.lineHasData  = data.byDate.length  > 0;
@@ -466,7 +520,7 @@ export default class TimeEntryDashboard extends LightningElement {
     /* ── Chart rendering ── */
 
     _renderCharts(data) {
-        this._renderBar(data.byStaff   || []);
+        this._renderBar((data.byStaff || []).slice(0, 20));
         this._renderLine(data.byDate   || [], data.byStaffByDate || []);
         this._renderDonut(
             this.isHomeMode ? (data.byMatter || []) : (data.byStaff || [])
