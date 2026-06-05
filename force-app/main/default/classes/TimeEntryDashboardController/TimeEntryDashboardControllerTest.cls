@@ -181,4 +181,55 @@ private class TimeEntryDashboardControllerTest {
 
         Test.stopTest();
     }
+
+    @isTest
+    static void testGetExportEntries() {
+        User u = [SELECT Id FROM User WHERE IsActive = true LIMIT 1];
+        NEOS_Matter__c matter = new NEOS_Matter__c(Name = 'Export Test Matter', Case_Title__c = 'Export Test Matter');
+        insert matter;
+        Time_Entry__c te = new Time_Entry__c(
+            Staff__c        = u.Id,
+            Entry_Date__c   = Date.today().addDays(-3),
+            Submit_Hours__c = 1.5,
+            NEOS_Matter__c  = matter.Id
+        );
+        insert te;
+
+        String today    = String.valueOf(Date.today());
+        String monthAgo = String.valueOf(Date.today().addDays(-30));
+
+        Test.startTest();
+
+        // Home page — staff filter
+        List<Map<String, Object>> byStaff = TimeEntryDashboardController.getExportEntries(
+            null, monthAgo, today, new List<String>{ u.Id }, false
+        );
+        System.assertNotEquals(null, byStaff);
+        System.assert(!byStaff.isEmpty());
+        System.assert(byStaff[0].containsKey('staff'));
+        System.assert(byStaff[0].containsKey('date'));
+        System.assert(byStaff[0].containsKey('hours'));
+        System.assert(byStaff[0].containsKey('matter'));
+
+        // Matter page — record scoped
+        List<Map<String, Object>> byMatter = TimeEntryDashboardController.getExportEntries(
+            matter.Id, monthAgo, today, null, false
+        );
+        System.assertNotEquals(null, byMatter);
+        System.assert(!byMatter.isEmpty());
+
+        // mineOnly
+        List<Map<String, Object>> mine = TimeEntryDashboardController.getExportEntries(
+            null, monthAgo, today, null, true
+        );
+        System.assertNotEquals(null, mine);
+
+        // blank dates fallback
+        List<Map<String, Object>> blankDates = TimeEntryDashboardController.getExportEntries(
+            null, '', '', null, false
+        );
+        System.assertNotEquals(null, blankDates);
+
+        Test.stopTest();
+    }
 }

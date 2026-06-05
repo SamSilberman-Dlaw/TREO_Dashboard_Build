@@ -156,7 +156,7 @@
 
                     <!-- Home: donut left + hours-by-matter right -->
                     <template if:true={isHomeMode}>
-                        <div class="chart-card">
+                        <div class="chart-card chart-card--home-left">
                             <div class="chart-card__title">{donutTitle}</div>
                             <div class="chart-wrap chart-wrap--donut">
                                 <canvas data-id="donut-chart"></canvas>
@@ -164,8 +164,18 @@
                                     <div class="chart-empty">No data</div>
                                 </template>
                             </div>
+                            <template if:true={donutHasData}>
+                                <div class="donut-legend">
+                                    <template for:each={donutLegend} for:item="item">
+                                        <div key={item.label} class="donut-legend__item">
+                                            <span class="donut-legend__swatch" style={item.swatchStyle}></span>
+                                            <span class="donut-legend__label" title={item.label}>{item.label}</span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
                         </div>
-                        <div class="chart-card">
+                        <div class="chart-card chart-card--home-right">
                             <div class="chart-card__title">Hours by Matter</div>
                             <div class="chart-wrap chart-wrap--hbar">
                                 <canvas data-id="hbar-chart"></canvas>
@@ -208,7 +218,7 @@
                                         <button type="button" class="chart-filter-clear" onclick={clearChartFilter}>&#x2715;</button>
                                     </div>
                                 </template>
-                                <button type="button" class="ted-export-btn" onclick={handleEntryTableExport} title="Download CSV">↓ CSV</button>
+                                <button type="button" class="ted-export-btn" onclick={handleEntryTableExport} disabled={_exportLoading} title="Download CSV">{exportBtnLabel}</button>
                             </div>
                             <lightning-datatable
                                 key-field="id"
@@ -258,7 +268,7 @@
                 </div>
                 <div class="ted-drill-hdr-right">
                     <template if:true={_staffDrillOpen}>
-                        <button type="button" class="ted-export-btn" onclick={handleStaffDrillExport} title="Download CSV">↓ CSV</button>
+                        <button type="button" class="ted-export-btn" onclick={handleStaffDrillExport} disabled={_exportLoading} title="Download CSV">{exportBtnLabel}</button>
                     </template>
                     <template if:false={_staffDrillOpen}>
                         <template if:true={showViewAllEntries}>

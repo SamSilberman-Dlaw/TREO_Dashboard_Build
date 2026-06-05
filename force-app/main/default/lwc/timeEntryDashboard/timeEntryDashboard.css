@@ -245,6 +245,19 @@
     height: 340px;
 }
 
+.chart-card--home-left,
+.chart-card--home-right {
+    display: flex;
+    flex-direction: column;
+}
+
+.chart-card--home-left .chart-wrap--donut,
+.chart-card--home-right .chart-wrap--hbar {
+    flex: 1;
+    height: auto;
+    min-height: 200px;
+}
+
 .chart-empty {
     position: absolute;
     inset: 0;
@@ -253,6 +266,35 @@
     justify-content: center;
     font-size: 0.8125rem;
     color: #706e6b;
+}
+
+.donut-legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem 0.75rem;
+    padding: 0.6rem 0.5rem 0.25rem;
+}
+
+.donut-legend__item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.donut-legend__swatch {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.donut-legend__label {
+    font-size: 0.75rem;
+    color: #3e3e3c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .date-range-label {

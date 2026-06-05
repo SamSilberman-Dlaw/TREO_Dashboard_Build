@@ -694,6 +694,47 @@ public without sharing class TimeEntryDashboardController {
     }
 
     @AuraEnabled
+    public static List<Map<String, Object>> getExportEntries(
+        String recordId, String startDate, String endDate,
+        List<String> staffIds, Boolean mineOnly
+    ) {
+        try {
+            Date startD = String.isNotBlank(startDate) ? Date.valueOf(startDate) : Date.today().addDays(-30);
+            Date endD   = String.isNotBlank(endDate)   ? Date.valueOf(endDate)   : Date.today();
+            Id matterId = String.isNotBlank(recordId)  ? (Id) recordId           : null;
+            Set<Id> staffIdSet = new Set<Id>();
+            if (mineOnly == true) { staffIdSet.add(UserInfo.getUserId()); }
+            else if (staffIds != null) { for (String s : staffIds) { if (String.isNotBlank(s)) staffIdSet.add((Id) s); } }
+            Boolean scopedToMatter = (matterId != null);
+            Boolean filterStaff    = !staffIdSet.isEmpty();
+
+            String q =
+                'SELECT Id, Staff__r.Name, Entry_Date__c, Submit_Hours__c, Notes__c, ' +
+                'NEOS_Matter__c, NEOS_Matter__r.Name ' +
+                'FROM Time_Entry__c WHERE Entry_Date__c >= :startD AND Entry_Date__c <= :endD';
+            if (scopedToMatter) q += ' AND NEOS_Matter__c = :matterId';
+            if (filterStaff)    q += ' AND Staff__c IN :staffIdSet';
+            q += ' ORDER BY Entry_Date__c DESC, Staff__r.Name ASC LIMIT 50000';
+
+            List<Map<String, Object>> entries = new List<Map<String, Object>>();
+            for (Time_Entry__c te : (List<Time_Entry__c>) Database.query(q)) {
+                entries.add(new Map<String, Object>{
+                    'id'       => te.Id,
+                    'staff'    => te.Staff__r       != null ? te.Staff__r.Name       : '',
+                    'date'     => String.valueOf(te.Entry_Date__c),
+                    'hours'    => te.Submit_Hours__c,
+                    'notes'    => te.Notes__c,
+                    'matter'   => te.NEOS_Matter__r != null ? te.NEOS_Matter__r.Name : '',
+                    'matterId' => te.NEOS_Matter__c != null ? String.valueOf(te.NEOS_Matter__c) : ''
+                });
+            }
+            return entries;
+        } catch (Exception e) {
+            throw new AuraHandledException(e.getTypeName() + ': ' + e.getMessage());
+        }
+    }
+
+    @AuraEnabled
     public static List<Map<String, Object>> getByMatter(
         String startDate, String endDate, List<String> staffIds, Boolean mineOnly
     ) {

@@ -8,6 +8,7 @@ import getAccurateTotals from '@salesforce/apex/TimeEntryDashboardController.get
 import getTeams          from '@salesforce/apex/TimeEntryDashboardController.getTeams';
 import getStaffEntries    from '@salesforce/apex/TimeEntryDashboardController.getStaffEntries';
 import getAllStaffEntries from '@salesforce/apex/TimeEntryDashboardController.getAllStaffEntries';
+import getExportEntries  from '@salesforce/apex/TimeEntryDashboardController.getExportEntries';
 
 const CHART_COLORS = [
     '#0176d3', '#1b96ff', '#032d60', '#0e56c4',
@@ -17,8 +18,12 @@ const CHART_COLORS = [
 const DONUT_COLORS = [
     '#0176d3', '#1b96ff', '#032d60', '#0e56c4',
     '#22a5f7', '#5eabf5', '#9dc9f5', '#c9e4fb',
-    '#77b9f2', '#aacff5'
+    '#77b9f2', '#aacff5', '#014486', '#3a7fc1',
+    '#005fb2', '#4ba3e3', '#0a2e6e', '#6ab0f0',
+    '#1565a8', '#88c4f5', '#2474b5', '#b3d9fb',
+    '#083d7a', '#55a8e8', '#1e6bbf', '#a0cffa'
 ];
+const _donutColor = (i) => DONUT_COLORS[i % DONUT_COLORS.length];
 
 const STAFF_COLORS = [
     '#0176d3', '#e06b25', '#2e844a', '#ba0517',
@@ -43,6 +48,7 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
     @track barHasData      = false;
     @track lineHasData     = false;
     @track donutHasData    = false;
+    @track donutLegend     = [];
     @track hbarHasData     = false;
     @track tableEntries    = [];
     @track sortedBy        = 'date';
@@ -68,7 +74,9 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
     @track _staffDrillLoading   = false;
     @track _staffDrillError     = false;
     @track _staffDrillTruncated = false;
+    @track _exportLoading       = false;
     _staffDrillIsMulti          = false;
+    _staffDrillStaffIds         = [];
     _byStaff                = [];
     _byMatter               = [];
     _byDate                 = [];
@@ -422,6 +430,7 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
         } else if (action.name === 'entries' && row.id) {
             this._staffDrillName      = row.name;
             this._staffDrillIsMulti   = false;
+            this._staffDrillStaffIds  = row.id ? [row.id] : [];
             this._staffDrillEntries   = [];
             this._staffDrillError     = false;
             this._staffDrillTruncated = false;
@@ -475,6 +484,7 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
 
         this._staffDrillName      = `${label} — All Entries`;
         this._staffDrillIsMulti   = true;
+        this._staffDrillStaffIds  = staffIds;
         this._staffDrillEntries   = [];
         this._staffDrillError     = false;
         this._staffDrillTruncated = false;
@@ -496,26 +506,112 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
             });
     }
 
+    get exportBtnLabel() { return this._exportLoading ? '…' : '↓ CSV'; }
+
+    /* ── Export helpers ── */
+
+    _fmtDate(isoStr) {
+        if (!isoStr) return '';
+        const [y, m, d] = isoStr.split('-').map(Number);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return `${months[m - 1]} ${d}, ${y}`;
+    }
+
+    _exportDateLabel() {
+        const presetMap = {
+            '7': 'Last 7 Days', '15': 'Last 15 Days', '30': 'Last 30 Days',
+            '90': 'Last 90 Days', 'mtd': 'Month to Date',
+            'thisweek': 'This Week', 'lastweek': 'Last Week'
+        };
+        if (this._activePreset && presetMap[this._activePreset]) return presetMap[this._activePreset];
+        return `${this._fmtDate(this.startDate)} – ${this._fmtDate(this.endDate)}`;
+    }
+
+    _exportDatePart() {
+        const presetMap = {
+            '7': 'Last-7-Days', '15': 'Last-15-Days', '30': 'Last-30-Days',
+            '90': 'Last-90-Days', 'mtd': 'MTD',
+            'thisweek': 'This-Week', 'lastweek': 'Last-Week'
+        };
+        if (this._activePreset && presetMap[this._activePreset]) return presetMap[this._activePreset];
+        const fmt = s => {
+            if (!s) return '';
+            const [y, m, d] = s.split('-').map(Number);
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return `${months[m - 1]}${d}`;
+        };
+        return `${fmt(this.startDate)}-${fmt(this.endDate)}-${(this.endDate || '').slice(0, 4)}`;
+    }
+
+    _exportScopeLabel() {
+        if (this.selectedTeamId) {
+            const team = this.teamOptions.find(o => o.value === this.selectedTeamId);
+            return team ? team.label : 'Team';
+        }
+        if (this.selectedStaffIds.length === 1) {
+            const s = this.staffOptions.find(o => o.value === this.selectedStaffIds[0]);
+            return s ? s.label : 'Staff';
+        }
+        if (this.selectedStaffIds.length > 1) return `${this.selectedStaffIds.length} Staff`;
+        if (this.viewMode === 'mine') return 'My Entries';
+        return 'D.Law';
+    }
+
+    _exportScopePart() {
+        return this._exportScopeLabel().replace(/\s+/g, '-').replace(/[^A-Za-z0-9-]/g, '');
+    }
+
+    _exportMetaRows(scopeOverride) {
+        const scope = scopeOverride || this._exportScopeLabel();
+        const lines = [
+            `D.Law Time Entries`,
+            `Period,${this._exportDateLabel()}`,
+            scope !== 'D.Law' ? `Filter,${scope}` : null,
+            `Exported,${this._fmtDate(new Date().toISOString().slice(0, 10))}`,
+            ''
+        ].filter(l => l !== null);
+        return lines.join('\n');
+    }
+
     handleStaffDrillExport() {
-        const headerCols = this._staffDrillIsMulti
-            ? ['Staff', 'Date', 'Matter', 'Hours', 'Notes']
-            : ['Date', 'Matter', 'Hours', 'Notes'];
-        const header = headerCols.join(',');
-        const body   = this._staffDrillEntries.map(e => {
-            const row = this._staffDrillIsMulti ? [e.staff || ''] : [];
-            return [...row,
-                e.date || '',
-                e.matter ? `"${e.matter}"` : '',
-                e.hours || 0,
-                e.notes  ? `"${e.notes}"` : ''
-            ].join(',');
-        }).join('\n');
-        const datePart  = this._activePreset || `${this.startDate}-to-${this.endDate}`;
-        const firstName = this._staffDrillName.split(' ')[0];
-        const link = this.template.querySelector('.ted-export-link');
-        link.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(header + '\n' + body);
-        link.download = `entries-${firstName}-${datePart}.csv`;
-        link.click();
+        if (this._exportLoading) return;
+        this._exportLoading = true;
+        const isMulti     = this._staffDrillIsMulti;
+        const scopeName   = this._staffDrillName || this._exportScopeLabel();
+        const staffIds    = this._staffDrillStaffIds || [];
+        getExportEntries({
+            recordId:  null,
+            startDate: this.startDate,
+            endDate:   this.endDate,
+            staffIds,
+            mineOnly:  false
+        })
+        .then(data => {
+            const entries    = data || [];
+            const headerCols = isMulti
+                ? ['Staff', 'Date', 'Matter', 'Hours', 'Notes']
+                : ['Date', 'Matter', 'Hours', 'Notes'];
+            const header = headerCols.join(',');
+            const body   = entries.map(e => {
+                const row = isMulti ? [e.staff || ''] : [];
+                return [...row,
+                    e.date   || '',
+                    e.matter ? `"${String(e.matter).replace(/"/g, '""')}"` : '',
+                    e.hours  || 0,
+                    e.notes  ? `"${String(e.notes).replace(/"/g, '""')}"` : ''
+                ].join(',');
+            }).join('\n');
+            const scopePart = scopeName.replace(/\s+/g, '-').replace(/[^A-Za-z0-9-]/g, '');
+            const meta      = this._exportMetaRows(scopeName);
+            const link = this.template.querySelector('.ted-export-link');
+            link.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(meta + header + '\n' + body);
+            link.download = `${scopePart}_Time-Entries_${this._exportDatePart()}.csv`;
+            link.click();
+        })
+        .catch(() => {
+            this.dispatchEvent(new ShowToastEvent({ title: 'Export failed', variant: 'error' }));
+        })
+        .finally(() => { this._exportLoading = false; });
     }
 
     handleDrillSort(e) {
@@ -537,34 +633,46 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
                 return typeof v === 'string' && v.includes(',') ? `"${v}"` : v;
             }).join(',')
         ).join('\n');
-        const teamLabel  = this.selectedTeamId
-            ? ((this.teamOptions.find(o => o.value === this.selectedTeamId) || {}).label || '').replace(/\s+/g, '-')
-            : '';
-        const staffLabel = this.selectedStaffIds.length === 1
-            ? ((this.staffOptions.find(o => o.value === this.selectedStaffIds[0]) || {}).label || '').split(' ')[0]
-            : this.selectedStaffIds.length > 1 ? `${this.selectedStaffIds.length}-staff` : '';
-        const filterPart = teamLabel || staffLabel || (this.viewMode === 'mine' ? 'mine' : '');
-        const datePart   = this._activePreset || `${this.startDate}-to-${this.endDate}`;
-        const filename   = [this._drillType, filterPart, datePart].filter(Boolean).join('-') + '.csv';
+        const typeLabel  = { matters: 'Matters', staff: 'Staff', entries: 'Entries' }[this._drillType] || this._drillType;
+        const meta       = this._exportMetaRows();
         const link = this.template.querySelector('.ted-export-link');
-        link.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(header + '\n' + body);
-        link.download = filename;
+        link.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(meta + header + '\n' + body);
+        link.download = `${this._exportScopePart()}_${typeLabel}_${this._exportDatePart()}.csv`;
         link.click();
     }
 
     handleRefresh() { this._load(); }
 
     handleEntryTableExport() {
-        const header = 'Staff,Date,Hours,Notes';
-        const body   = this.tableEntries.map(e =>
-            [e.staff || '', e.date || '', e.hours || 0,
-             e.notes ? `"${String(e.notes).replace(/"/g, '""')}"` : ''].join(',')
-        ).join('\n');
-        const datePart = this._activePreset || `${this.startDate}-to-${this.endDate}`;
-        const link = this.template.querySelector('.ted-export-link');
-        link.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(header + '\n' + body);
-        link.download = `time-entries-${datePart}.csv`;
-        link.click();
+        if (this._exportLoading) return;
+        this._exportLoading = true;
+        getExportEntries({
+            recordId:  this.recordId || null,
+            startDate: this.startDate,
+            endDate:   this.endDate,
+            staffIds:  this.selectedStaffIds,
+            mineOnly:  this.viewMode === 'mine'
+        })
+        .then(data => {
+            const entries = data || [];
+            const header  = 'Staff,Date,Matter,Hours,Notes';
+            const body    = entries.map(e =>
+                [e.staff  || '',
+                 e.date   || '',
+                 e.matter ? `"${String(e.matter).replace(/"/g, '""')}"` : '',
+                 e.hours  || 0,
+                 e.notes  ? `"${String(e.notes).replace(/"/g, '""')}"` : ''].join(',')
+            ).join('\n');
+            const meta = this._exportMetaRows();
+            const link = this.template.querySelector('.ted-export-link');
+            link.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(meta + header + '\n' + body);
+            link.download = `${this._exportScopePart()}_Time-Entries_${this._exportDatePart()}.csv`;
+            link.click();
+        })
+        .catch(() => {
+            this.dispatchEvent(new ShowToastEvent({ title: 'Export failed', variant: 'error' }));
+        })
+        .finally(() => { this._exportLoading = false; });
     }
 
     clearChartFilter() {
@@ -837,7 +945,9 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
         this._renderBar((data.byStaff || []).slice(0, 20));
         this._renderLine(data.byDate   || [], data.byStaffByDate || []);
         this._renderDonut(
-            this.isHomeMode ? (data.byMatter || []) : (data.byStaff || [])
+            this.isHomeMode
+                ? (data.byMatter || []).slice(0, 10)
+                : (data.byStaff  || [])
         );
         if (this.isHomeMode) {
             this._renderHBar((data.byMatter || []).slice(0, 10));
@@ -1110,14 +1220,21 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
 
         const total = rows.reduce((s, r) => s + Number(r.hours || 0), 0);
 
+        this.donutLegend = this.isHomeMode
+            ? rows.map((r, i) => {
+                const color = _donutColor(i);
+                return { label: r.name || 'Unknown', color, swatchStyle: `background:${color}` };
+            })
+            : [];
+
         // eslint-disable-next-line no-undef
         this._donutChart = new Chart(canvas, {
             type: 'doughnut',
             data: {
                 labels: rows.map(r => r.name || 'Unknown'),
                 datasets: [{
-                    data: rows.map(r => Number(r.hours || 0).toFixed(2)),
-                    backgroundColor: DONUT_COLORS.slice(0, rows.length),
+                    data: rows.map(r => Number(r.hours || 0)),
+                    backgroundColor: rows.map((_, i) => _donutColor(i)),
                     borderWidth: 2,
                     borderColor: '#fff'
                 }]
@@ -1127,7 +1244,9 @@ export default class TimeEntryDashboard extends NavigationMixin(LightningElement
                 maintainAspectRatio: false,
                 cutout: '65%',
                 plugins: {
-                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
+                    legend: this.isHomeMode
+                        ? { display: false }
+                        : { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
                     tooltip: {
                         callbacks: {
                             label: ctx => {
